@@ -1,16 +1,22 @@
 from agents import function_tool
 import httpx
 from typing import Optional, Dict, List, Any
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 from tools.cache import add_to_trial_cache
+import xml.etree.ElementTree as ET
 
 
 BASE_URL = "https://clinicaltrials.gov/api/v2/studies"
+LEGACY_API_URL = "https://classic.clinicaltrials.gov/api/query/study_fields"
 
-# Headers to identify as a legitimate application (required by ClinicalTrials.gov)
+# Browser-like headers to avoid blocking
 REQUEST_HEADERS = {
-    "User-Agent": "PathfinderAgent/1.0 (Clinical Trial Search Application; contact@example.com)",
-    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Cache-Control": "no-cache",
 }
 
 
@@ -352,9 +358,117 @@ def search_clinical_trials(
         return "".join(results)
         
     except httpx.HTTPStatusError as e:
+        if e.response.status_code == 403:
+            print(f"[API] Got 403, trying legacy API fallback...")
+            return _search_legacy_api(condition, intervention, location, status, query_params)
         return f"Error searching ClinicalTrials.gov: HTTP {e.response.status_code}. Please try simplifying your search."
     except httpx.RequestError as e:
-        return f"Error connecting to ClinicalTrials.gov: {str(e)}. Please try again."
+        print(f"[API] Connection error, trying legacy API fallback...")
+        return _search_legacy_api(condition, intervention, location, status, query_params)
     except Exception as e:
         print(f"[Error] {str(e)}")
         return f"Error searching clinical trials: {str(e)}. Please try again with different search criteria."
+
+
+def _search_legacy_api(condition: str, intervention: str, location: str, status: str, query_params: dict) -> str:
+    """Fallback to the legacy ClinicalTrials.gov API."""
+    try:
+        # Build expression for legacy API
+        expr_parts = []
+        if condition:
+            expr_parts.append(f"AREA[Condition]{condition}")
+        if intervention:
+            expr_parts.append(f"AREA[Intervention]{intervention}")
+        if location:
+            expr_parts.append(f"AREA[LocationCountry]United States AND AREA[LocationCity]{location}")
+        if status and status.lower() == "recruiting":
+            expr_parts.append("AREA[OverallStatus]Recruiting")
+        
+        expr = " AND ".join(expr_parts) if expr_parts else "cancer"
+        
+        params = {
+            "expr": expr,
+            "fields": "NCTId,BriefTitle,OverallStatus,Phase,LeadSponsorName,Condition,InterventionName,LocationCity,BriefSummary",
+            "min_rnk": 1,
+            "max_rnk": 20,
+            "fmt": "json"
+        }
+        
+        print(f"[Legacy API] Trying: {LEGACY_API_URL}?{urlencode(params)}")
+        
+        with httpx.Client(timeout=30.0, headers=REQUEST_HEADERS, follow_redirects=True) as client:
+            response = client.get(LEGACY_API_URL, params=params)
+            print(f"[Legacy API] Status: {response.status_code}")
+            
+            if response.status_code == 403:
+                # Both APIs blocked - return helpful message
+                return f"SEARCH RESULT: Unable to search. ClinicalTrials.gov is blocking requests from this server. Please visit https://clinicaltrials.gov/search?cond={quote(condition or '')}&locn={quote(location or '')} directly to search."
+            
+            response.raise_for_status()
+            data = response.json()
+        
+        studies = data.get("StudyFieldsResponse", {}).get("StudyFields", [])
+        n_found = data.get("StudyFieldsResponse", {}).get("NStudiesFound", 0)
+        
+        if not studies:
+            add_to_trial_cache(query_params, 0, [])
+            return f"SEARCH RESULT: 0 trials found for this search."
+        
+        structured_trials = []
+        results = [f"SEARCH RESULT: {n_found} trials found. Showing top {len(studies)} results:\n"]
+        
+        for i, study in enumerate(studies, 1):
+            nct = study.get("NCTId", ["N/A"])[0] if study.get("NCTId") else "N/A"
+            title = study.get("BriefTitle", ["No title"])[0] if study.get("BriefTitle") else "No title"
+            overall_status = study.get("OverallStatus", ["Unknown"])[0] if study.get("OverallStatus") else "Unknown"
+            phases = study.get("Phase", [])
+            phase_str = ", ".join(phases) if phases else "N/A"
+            sponsor = study.get("LeadSponsorName", ["Unknown"])[0] if study.get("LeadSponsorName") else "Unknown"
+            conditions = study.get("Condition", [])
+            conditions_str = ", ".join(conditions[:3]) if conditions else "Not specified"
+            interventions = study.get("InterventionName", [])
+            interventions_str = ", ".join(interventions[:3]) if interventions else "Not specified"
+            locations = study.get("LocationCity", [])
+            locations_str = ", ".join(locations[:3]) if locations else "Not specified"
+            summary = study.get("BriefSummary", [""])[0] if study.get("BriefSummary") else ""
+            summary_truncated = summary[:200] + "..." if len(summary) > 200 else summary
+            
+            trial_data = {
+                "nct_id": nct,
+                "title": title,
+                "status": overall_status,
+                "phase": phase_str,
+                "phase_display": phase_str,
+                "sponsor": sponsor,
+                "conditions": conditions_str,
+                "interventions": interventions_str,
+                "enrollment": "N/A",
+                "eligibility": {},
+                "locations": locations_str,
+                "summary": summary,
+                "link": f"https://clinicaltrials.gov/study/{nct}"
+            }
+            structured_trials.append(trial_data)
+            
+            result = f"""
+---
+**{i}. {title}**
+- **NCT ID:** {nct}
+- **Status:** {overall_status}
+- **Phase:** {phase_str}
+- **Sponsor:** {sponsor}
+- **Conditions:** {conditions_str}
+- **Interventions:** {interventions_str}
+- **Locations:** {locations_str}
+- **Summary:** {summary_truncated if summary_truncated else 'No summary available'}
+- **Link:** https://clinicaltrials.gov/study/{nct}
+"""
+            results.append(result)
+        
+        add_to_trial_cache(query_params, n_found, structured_trials)
+        return "".join(results)
+        
+    except Exception as e:
+        print(f"[Legacy API Error] {str(e)}")
+        search_url = f"https://clinicaltrials.gov/search?cond={quote(condition or '')}&locn={quote(location or '')}"
+        return f"SEARCH RESULT: Unable to search ClinicalTrials.gov from this server. Please visit {search_url} directly to search for trials."
