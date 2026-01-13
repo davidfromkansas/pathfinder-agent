@@ -4,10 +4,19 @@ import json
 import os
 import re
 
-# Ensure data directory exists for session storage
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-os.makedirs(DATA_DIR, exist_ok=True)
-SESSION_DB_PATH = os.path.join(DATA_DIR, 'sessions.db')
+# Use /tmp for Railway (writable), fallback to local data dir
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    DATA_DIR = '/tmp/data'
+else:
+    DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    SESSION_DB_PATH = os.path.join(DATA_DIR, 'sessions.db')
+    print(f"[Agent] Session DB path: {SESSION_DB_PATH}", flush=True)
+except Exception as e:
+    print(f"[Agent] Could not create data dir: {e}", flush=True)
+    SESSION_DB_PATH = None
 
 # Load system prompt from markdown file
 PROMPTS_DIR = os.path.join(os.path.dirname(__file__), 'prompts')
@@ -28,9 +37,16 @@ clinical_agent = Agent(
 )
 
 
-def get_session(session_id: str) -> SQLiteSession:
+def get_session(session_id: str):
     """Get or create a session for the given session ID."""
-    return SQLiteSession(session_id, SESSION_DB_PATH)
+    if not SESSION_DB_PATH:
+        print(f"[Agent] Session storage unavailable, running without memory", flush=True)
+        return None
+    try:
+        return SQLiteSession(session_id, SESSION_DB_PATH)
+    except Exception as e:
+        print(f"[Agent] Session creation failed: {e}, running without memory", flush=True)
+        return None
 
 
 
@@ -118,10 +134,13 @@ async def get_agent_response_stream(message: str, session_id: str = None, mode: 
     - 'research': Focus only on PubMed research
     """
     # Create session if session_id provided
-    session = get_session(session_id) if session_id else None
-    
-    if session:
-        print(f"[Agent] Using session: {session_id}", flush=True)
+    session = None
+    if session_id:
+        session = get_session(session_id)
+        if session:
+            print(f"[Agent] Using session: {session_id}", flush=True)
+        else:
+            print(f"[Agent] No session available, running stateless", flush=True)
     
     # Add mode-specific instructions to the message
     mode_instruction = get_mode_instruction(mode)
@@ -129,7 +148,11 @@ async def get_agent_response_stream(message: str, session_id: str = None, mode: 
     
     print(f"[Agent] Mode: {mode}", flush=True)
     
-    result = Runner.run_streamed(clinical_agent, full_message, session=session)
+    try:
+        result = Runner.run_streamed(clinical_agent, full_message, session=session)
+    except Exception as e:
+        print(f"[Agent] Failed to start stream: {e}", flush=True)
+        raise
     
     # Buffer to accumulate text and filter out JSON blobs
     text_buffer = ""

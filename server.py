@@ -10,6 +10,17 @@ from tools.cache import get_trial_cache, clear_trial_cache, get_research_cache, 
 # Load environment variables from .env file
 load_dotenv()
 
+# Startup checks
+api_key = os.environ.get("OPENAI_API_KEY")
+if api_key:
+    print(f"[Server] OPENAI_API_KEY is set (length: {len(api_key)})", flush=True)
+else:
+    print("[Server] WARNING: OPENAI_API_KEY is NOT set!", flush=True)
+
+railway_env = os.environ.get("RAILWAY_ENVIRONMENT")
+if railway_env:
+    print(f"[Server] Running on Railway: {railway_env}", flush=True)
+
 app = FastAPI()
 
 
@@ -69,10 +80,14 @@ async def search(request: Request):
             print("[Server] Sending [DONE]", flush=True)
             yield "data: [DONE]\n\n"
         except Exception as e:
-            print(f"[Server] Streaming error: {str(e)}", flush=True)
+            error_msg = str(e)
+            print(f"[Server] Streaming error: {error_msg}", flush=True)
             import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            # Provide more context for connection errors
+            if "connection" in error_msg.lower() or "connect" in error_msg.lower():
+                error_msg = f"Connection error: {error_msg}. Please check OPENAI_API_KEY is set correctly."
+            yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
     
     return StreamingResponse(
         generate(),
