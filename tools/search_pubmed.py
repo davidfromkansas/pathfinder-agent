@@ -8,6 +8,12 @@ from .cache import add_pubmed_article
 ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
 
+# Headers for NCBI API requests
+REQUEST_HEADERS = {
+    "User-Agent": "PathfinderAgent/1.0 (Clinical Research Application)",
+    "Accept": "application/json",
+}
+
 
 @function_tool
 def search_pubmed(
@@ -82,7 +88,7 @@ def search_pubmed(
         
         print(f"[PubMed] Query: {full_query}")
         
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=30.0, headers=REQUEST_HEADERS) as client:
             search_response = client.get(ESEARCH_URL, params=search_params)
             search_response.raise_for_status()
             search_data = search_response.json()
@@ -102,7 +108,7 @@ def search_pubmed(
             "retmode": "json"
         }
         
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=30.0, headers=REQUEST_HEADERS) as client:
             summary_response = client.get(ESUMMARY_URL, params=summary_params)
             summary_response.raise_for_status()
             summary_data = summary_response.json()

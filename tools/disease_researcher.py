@@ -12,6 +12,12 @@ MEDLINEPLUS_API = "https://connect.medlineplus.gov/service"
 # NCI Dictionary API - Cancer-specific terms
 NCI_DICT_API = "https://api.cancer.gov/v1/Terms"
 
+# Headers for API requests
+REQUEST_HEADERS = {
+    "User-Agent": "PathfinderAgent/1.0 (Medical Research Application)",
+    "Accept": "application/json",
+}
+
 
 @function_tool
 def research_disease(
@@ -86,7 +92,7 @@ def _search_medlineplus(query: str) -> Optional[str]:
             "knowledgeResponseType": "application/json"
         }
         
-        with httpx.Client(timeout=15.0) as client:
+        with httpx.Client(timeout=15.0, headers=REQUEST_HEADERS) as client:
             response = client.get(MEDLINEPLUS_API, params=params)
             
             if response.status_code != 200:
@@ -143,7 +149,7 @@ def _search_medlineplus_web(query: str) -> Optional[str]:
             "retmax": 5
         }
         
-        with httpx.Client(timeout=15.0) as client:
+        with httpx.Client(timeout=15.0, headers=REQUEST_HEADERS) as client:
             response = client.get(search_url, params=params)
             
             if response.status_code != 200:
@@ -202,7 +208,7 @@ def _search_nci_dictionary(query: str) -> Optional[str]:
             "from": 0
         }
         
-        with httpx.Client(timeout=15.0) as client:
+        with httpx.Client(timeout=15.0, headers=REQUEST_HEADERS) as client:
             response = client.get(
                 f"{NCI_DICT_API}/search/Cancer.gov",
                 params=params

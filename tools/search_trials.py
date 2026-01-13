@@ -7,6 +7,12 @@ from tools.cache import add_to_trial_cache
 
 BASE_URL = "https://clinicaltrials.gov/api/v2/studies"
 
+# Headers to identify as a legitimate application (required by ClinicalTrials.gov)
+REQUEST_HEADERS = {
+    "User-Agent": "PathfinderAgent/1.0 (Clinical Trial Search Application; contact@example.com)",
+    "Accept": "application/json",
+}
+
 
 @function_tool
 def search_clinical_trials(
@@ -174,7 +180,7 @@ def search_clinical_trials(
     print(f"[API Request] {BASE_URL}?{urlencode(params)}")
     
     try:
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=30.0, headers=REQUEST_HEADERS) as client:
             response = client.get(BASE_URL, params=params)
             
             # Debug: print response status
