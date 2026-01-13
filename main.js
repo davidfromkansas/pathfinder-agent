@@ -807,7 +807,19 @@ function applyTrialFilters() {
         const cardStatus = card.dataset.status;
         
         const phaseMatch = phaseFilter === 'all' || cardPhase === phaseFilter;
-        const statusMatch = statusFilter === 'all' || cardStatus.includes(statusFilter);
+        
+        // Status matching: normalize filter value to match API status format
+        let statusMatch = true;
+        if (statusFilter !== 'all') {
+            // Normalize filter value to match how statuses are stored (lowercase, underscores)
+            // Filter values: "recruiting", "not yet recruiting", "active, not recruiting"
+            // Card statuses: "recruiting", "not_yet_recruiting", "active_not_recruiting"
+            const normalizedFilter = statusFilter.toLowerCase()
+                .replace(/\s*,\s*/g, '_')  // "active, not recruiting" -> "active_not_recruiting"
+                .replace(/\s+/g, '_');     // "not yet recruiting" -> "not_yet_recruiting"
+            // Do exact match to avoid substring issues (e.g., "recruiting" matching "not_yet_recruiting")
+            statusMatch = cardStatus === normalizedFilter;
+        }
         
         if (phaseMatch && statusMatch) {
             card.classList.remove('filtered-out');
