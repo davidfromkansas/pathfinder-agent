@@ -1,8 +1,20 @@
+import os
+import json
+import re
+
+# Load .env BEFORE importing agents SDK (it needs OPENAI_API_KEY)
+from dotenv import load_dotenv
+load_dotenv()
+
+# Verify API key is available
+api_key = os.environ.get("OPENAI_API_KEY")
+if api_key:
+    print(f"[Agent] API key loaded (starts with: {api_key[:8]}...)", flush=True)
+else:
+    print("[Agent] ERROR: OPENAI_API_KEY not found in environment!", flush=True)
+
 from agents import Agent, Runner, SQLiteSession
 from tools import all_tools
-import json
-import os
-import re
 
 # Use /tmp for Railway (writable), fallback to local data dir
 if os.environ.get('RAILWAY_ENVIRONMENT'):
