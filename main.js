@@ -309,6 +309,10 @@ async function sendMessageToAgent(message) {
                                 if (trialCache.allTrials.length > 0) {
                                     showTrialResultsPage(trialCache);
                                 }
+                            } else if (parsed.type === 'client_side_search') {
+                                // Server was blocked from ClinicalTrials.gov - run search from browser
+                                console.log('%c🌐 Client-side search requested:', 'color: #E91E63; font-weight: bold;', parsed.search);
+                                await performClientSideTrialSearch(parsed.search);
                             } else if (parsed.type === 'error') {
                                 ensureMessageDiv().textContent = 'Sorry, I encountered an error: ' + parsed.message;
                             }
@@ -941,3 +945,157 @@ function createTrialCard(trial) {
 
 // Expose trialCache globally for debugging in console
 window.trialCache = trialCache;
+
+// ========================================
+// Client-Side Clinical Trials Search
+// ========================================
+
+async function performClientSideTrialSearch(searchParams) {
+    console.log('%c🔍 Performing client-side search...', 'color: #E91E63; font-weight: bold;');
+    
+    const { condition, intervention, location, status, query_params } = searchParams;
+    
+    // Build API parameters
+    const params = new URLSearchParams();
+    params.append('format', 'json');
+    params.append('pageSize', '50');
+    
+    // Add fields to return
+    const fields = [
+        'NCTId', 'BriefTitle', 'OfficialTitle', 'OverallStatus', 'Phase',
+        'LeadSponsorName', 'Condition', 'InterventionName', 'BriefSummary',
+        'LocationCity', 'LocationState', 'LocationCountry', 'EligibilityCriteria',
+        'MinimumAge', 'MaximumAge', 'Gender', 'EnrollmentCount'
+    ];
+    fields.forEach(f => params.append('fields', f));
+    
+    // Add condition filter
+    if (condition) {
+        params.append('query.cond', condition);
+    }
+    
+    // Add intervention filter
+    if (intervention) {
+        params.append('query.intr', intervention);
+    }
+    
+    // Add location filter
+    if (location) {
+        params.append('query.locn', location);
+    }
+    
+    // Add status filter (default to recruiting)
+    params.append('filter.overallStatus', status || 'RECRUITING');
+    
+    const apiUrl = `https://clinicaltrials.gov/api/v2/studies?${params.toString()}`;
+    console.log('%c📡 API URL:', 'color: #9C27B0;', apiUrl);
+    
+    try {
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const studies = data.studies || [];
+        const totalCount = data.totalCount || studies.length;
+        
+        console.log('%c✅ Client-side search successful:', 'color: #4CAF50; font-weight: bold;', 
+            `${totalCount} trials found, ${studies.length} returned`);
+        
+        // Transform to our trial format
+        const trials = studies.map(study => {
+            const protocol = study.protocolSection || {};
+            const id = protocol.identificationModule || {};
+            const statusModule = protocol.statusModule || {};
+            const design = protocol.designModule || {};
+            const sponsor = protocol.sponsorCollaboratorsModule || {};
+            const desc = protocol.descriptionModule || {};
+            const conditions = protocol.conditionsModule || {};
+            const interventions = protocol.armsInterventionsModule || {};
+            const eligibility = protocol.eligibilityModule || {};
+            const contacts = protocol.contactsLocationsModule || {};
+            
+            const phases = design.phases || [];
+            const phaseStr = phases.join(', ') || 'N/A';
+            
+            const conditionsList = conditions.conditions || [];
+            const interventionsList = (interventions.interventions || []).map(i => i.name);
+            
+            const locations = (contacts.locations || []).slice(0, 3).map(loc => 
+                `${loc.city || ''}${loc.state ? ', ' + loc.state : ''}`
+            ).filter(Boolean);
+            
+            return {
+                nct_id: id.nctId || 'N/A',
+                title: id.briefTitle || 'Untitled',
+                status: statusModule.overallStatus || 'Unknown',
+                phase: phaseStr,
+                phase_display: phaseStr,
+                sponsor: sponsor.leadSponsor?.name || 'Unknown',
+                conditions: conditionsList.slice(0, 3).join(', ') || 'Not specified',
+                interventions: interventionsList.slice(0, 3).join(', ') || 'Not specified',
+                enrollment: design.enrollmentInfo?.count || 'N/A',
+                eligibility: {
+                    minAge: eligibility.minimumAge || 'N/A',
+                    maxAge: eligibility.maximumAge || 'N/A',
+                    sex: eligibility.sex || 'All'
+                },
+                locations: locations.join('; ') || 'Not specified',
+                summary: (desc.briefSummary || '').substring(0, 300),
+                link: `https://clinicaltrials.gov/study/${id.nctId}`
+            };
+        });
+        
+        // Build search URL for the indicator
+        const searchUrl = `https://clinicaltrials.gov/search?cond=${encodeURIComponent(condition || '')}&locn=${encodeURIComponent(location || '')}&aggFilters=status:rec`;
+        
+        // Add to trial cache
+        const searchEntry = {
+            query: query_params || { condition, intervention, location, status },
+            results_count: trials.length,
+            url: searchUrl
+        };
+        
+        // Merge with existing cache
+        trialCache.searches.push(searchEntry);
+        
+        // Add trials (avoid duplicates by NCT ID)
+        const existingIds = new Set(trialCache.allTrials.map(t => t.nct_id));
+        trials.forEach(trial => {
+            if (!existingIds.has(trial.nct_id)) {
+                trialCache.allTrials.push(trial);
+                existingIds.add(trial.nct_id);
+            }
+        });
+        trialCache.totalCount = trialCache.allTrials.length;
+        
+        console.log('%c💾 Updated trial cache:', 'color: #FF9800; font-weight: bold;', 
+            `${trialCache.totalCount} total trials from ${trialCache.searches.length} searches`);
+        
+        // Update search indicator
+        completeSearchIndicator(trialCache.totalCount, trialCache.searches);
+        
+        // Show the results
+        if (trialCache.allTrials.length > 0) {
+            showTrialResultsPage(trialCache);
+        }
+        
+    } catch (error) {
+        console.error('%c❌ Client-side search failed:', 'color: #F44336; font-weight: bold;', error);
+        
+        // Show a helpful message to the user
+        const searchUrl = `https://clinicaltrials.gov/search?cond=${encodeURIComponent(condition || '')}&locn=${encodeURIComponent(location || '')}&aggFilters=status:rec`;
+        
+        // Add a "failed" search entry
+        trialCache.searches.push({
+            query: query_params || { condition, intervention, location, status },
+            results_count: 0,
+            url: searchUrl,
+            error: error.message
+        });
+        
+        completeSearchIndicator(trialCache.totalCount, trialCache.searches);
+    }
+}
