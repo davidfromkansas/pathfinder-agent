@@ -312,7 +312,12 @@ async function sendMessageToAgent(message) {
                             } else if (parsed.type === 'client_search') {
                                 // Server was blocked - perform search from browser
                                 console.log('%c🌐 Client-side search requested:', 'color: #E91E63; font-weight: bold;', parsed.search);
-                                performClientSideTrialSearch(parsed.search);
+                                // Use try-catch to ensure errors are visible
+                                try {
+                                    await performClientSideTrialSearch(parsed.search);
+                                } catch (err) {
+                                    console.error('%c❌ Client search error:', 'color: #F44336; font-weight: bold;', err);
+                                }
                             } else if (parsed.type === 'error') {
                                 ensureMessageDiv().textContent = 'Sorry, I encountered an error: ' + parsed.message;
                             }
@@ -953,10 +958,18 @@ window.trialCache = trialCache;
 // The user's browser makes the API call directly instead
 
 async function performClientSideTrialSearch(searchParams) {
+    console.log('%c🔍 performClientSideTrialSearch called with:', 'color: #E91E63; font-weight: bold;', searchParams);
+    
+    if (!searchParams) {
+        console.error('❌ No search params provided!');
+        return;
+    }
+    
     const { condition, intervention, location, status, query_params } = searchParams;
     
     console.log('%c🔍 Starting client-side search...', 'color: #E91E63; font-weight: bold;');
     console.log('   Condition:', condition);
+    console.log('   Intervention:', intervention);
     console.log('   Location:', location);
     console.log('   Status:', status);
     
@@ -991,15 +1004,20 @@ async function performClientSideTrialSearch(searchParams) {
     
     const apiUrl = `https://clinicaltrials.gov/api/v2/studies?${apiParams.toString()}`;
     console.log('%c📡 API URL:', 'color: #9C27B0;', apiUrl);
+    console.log('%c📡 Making fetch request...', 'color: #9C27B0;');
     
     try {
         const response = await fetch(apiUrl);
+        console.log('%c📡 Fetch response received:', 'color: #9C27B0;', response.status, response.statusText);
         
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response body:', errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const data = await response.json();
+        console.log('%c📡 JSON parsed:', 'color: #9C27B0;', 'totalCount:', data.totalCount, 'studies:', data.studies?.length);
         const studies = data.studies || [];
         const totalCount = data.totalCount || studies.length;
         
