@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Trials Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Clinical Agent</div>
+        <nav>
+            <a href="#">How it Works</a>
+            <a href="#">About</a>
+        </nav>
+    </header>
+
+    <!-- Landing View -->
+    <main id="landingView" class="landing-view">
+        <h1>Find clinical trials for your condition</h1>
+        <p class="subtitle">Search thousands of active trials worldwide</p>
+
+        <div class="search-container">
+            <div class="search-box">
+                <textarea 
+                    id="conditionInput"
+                    placeholder="Describe your condition..."
+                    rows="2"
+                ></textarea>
+                <div class="search-box-footer">
+                    <div class="mode-toggles" id="landingModeToggles">
+                        <button class="mode-toggle active" data-mode="auto" onclick="setSearchMode('auto')">
+                            <span class="mode-icon">✨</span> Auto
+                        </button>
+                        <button class="mode-toggle" data-mode="trials" onclick="setSearchMode('trials')">
+                            <span class="mode-icon">🔬</span> Trials
+                        </button>
+                        <button class="mode-toggle" data-mode="research" onclick="setSearchMode('research')">
+                            <span class="mode-icon">📚</span> Research
+                        </button>
+                    </div>
+                    <button class="search-btn" onclick="handleSearch()">Search</button>
+                </div>
+            </div>
+
+            <div class="examples">
+                <span class="example-chip" onclick="setExample('Type 2 diabetes')">Type 2 Diabetes</span>
+                <span class="example-chip" onclick="setExample('Breast cancer')">Breast Cancer</span>
+                <span class="example-chip" onclick="setExample('Chronic migraines')">Migraines</span>
+                <span class="example-chip" onclick="setExample('Rheumatoid arthritis')">Arthritis</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Conversation View (Split Layout) -->
+    <div id="conversationView" class="conversation-view hidden">
+        <!-- Left: Chat Panel (1/3 width when results showing) -->
+        <div class="chat-panel" id="chatPanel">
+            <div class="messages" id="messagesContainer">
+            </div>
+            
+            <div class="input-container">
+                <div class="search-box">
+                    <textarea 
+                        id="chatInput"
+                        placeholder="Type a message..."
+                        rows="1"
+                    ></textarea>
+                    <div class="search-box-footer">
+                        <div class="mode-toggles compact" id="chatModeToggles">
+                            <button class="mode-toggle active" data-mode="auto" onclick="setSearchMode('auto')">
+                                <span class="mode-icon">✨</span> Auto
+                            </button>
+                            <button class="mode-toggle" data-mode="trials" onclick="setSearchMode('trials')">
+                                <span class="mode-icon">🔬</span> Trials
+                            </button>
+                            <button class="mode-toggle" data-mode="research" onclick="setSearchMode('research')">
+                                <span class="mode-icon">📚</span> Research
+                            </button>
+                        </div>
+                        <button id="sendBtn" class="search-btn" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Results Page (2/3 width) -->
+        <div class="trial-results-page hidden" id="trialResultsPage">
+            <!-- Tabs -->
+            <div class="results-tabs">
+                <button class="results-tab active" data-tab="trials" onclick="switchResultsTab('trials')">
+                    Clinical Trials
+                    <span class="tab-count" id="resultsCount">0</span>
+                </button>
+                <button class="results-tab" data-tab="research" onclick="switchResultsTab('research')">
+                    Research
+                    <span class="tab-count" id="researchCount">0</span>
+                </button>
+            </div>
+            
+            <!-- Research Tab (PubMed Articles) -->
+            <div class="tab-content" id="researchTabContent">
+                <div class="tab-empty-state">
+                    <div class="empty-icon">📚</div>
+                    <h3>Research Articles</h3>
+                    <p>Relevant research from PubMed will appear here</p>
+                </div>
+            </div>
+            
+            <!-- Clinical Trials Tab -->
+            <div class="tab-content active" id="trialsTabContent">
+                <div class="tab-header">
+                    <p class="results-subtitle" id="searchSummary">From 0 searches</p>
+                    <div class="trial-filters">
+                        <div class="filter-group">
+                            <label for="phaseFilter">Phase</label>
+                            <select id="phaseFilter" onchange="applyTrialFilters()">
+                                <option value="all">All Phases</option>
+                                <option value="early">Early Phase 1</option>
+                                <option value="1">Phase 1</option>
+                                <option value="1/2">Phase 1/2</option>
+                                <option value="2">Phase 2</option>
+                                <option value="2/3">Phase 2/3</option>
+                                <option value="3">Phase 3</option>
+                                <option value="4">Phase 4</option>
+                                <option value="na">N/A</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="statusFilter">Status</label>
+                            <select id="statusFilter" onchange="applyTrialFilters()">
+                                <option value="all">All Statuses</option>
+                                <option value="recruiting">Recruiting</option>
+                                <option value="not yet recruiting">Not Yet Recruiting</option>
+                                <option value="active, not recruiting">Active, Not Recruiting</option>
+                                <option value="enrolling by invitation">Enrolling by Invitation</option>
+                                <option value="completed">Completed</option>
+                                <option value="suspended">Suspended</option>
+                                <option value="terminated">Terminated</option>
+                                <option value="withdrawn">Withdrawn</option>
+                            </select>
+                        </div>
+                        <span class="filter-count" id="filteredCount"></span>
+                    </div>
+                </div>
+                <div class="results-list" id="resultsList">
+                    <!-- Trial cards rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        © 2026 Clinical Agent
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>
