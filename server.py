@@ -29,6 +29,18 @@ async def index():
     return FileResponse("index.html")
 
 
+@app.get("/health")
+async def health():
+    """Health check endpoint for debugging."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    return {
+        "status": "ok",
+        "api_key_set": bool(api_key),
+        "api_key_preview": f"{api_key[:8]}..." if api_key else None,
+        "railway": os.environ.get("RAILWAY_ENVIRONMENT"),
+    }
+
+
 @app.get("/styles.css")
 async def styles():
     return FileResponse("styles.css")
