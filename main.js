@@ -973,34 +973,30 @@ async function performClientSideTrialSearch(searchParams) {
     console.log('   Location:', location);
     console.log('   Status:', status);
     
-    // Build the API URL
+    // Build the API URL for ClinicalTrials.gov API v2
+    // Note: We query broadly and filter for recruiting status client-side
     const apiParams = new URLSearchParams();
     apiParams.append('format', 'json');
-    apiParams.append('pageSize', '50');
+    apiParams.append('pageSize', '100'); // Get more results to filter
     
-    // Request specific fields
-    const fields = [
-        'NCTId', 'BriefTitle', 'OfficialTitle', 'OverallStatus', 'Phase',
-        'LeadSponsorName', 'Condition', 'InterventionName', 'BriefSummary',
-        'LocationCity', 'LocationState', 'LocationCountry', 
-        'MinimumAge', 'MaximumAge', 'Gender', 'EnrollmentCount'
-    ];
-    fields.forEach(f => apiParams.append('fields', f));
-    
-    // Add search filters
+    // Build combined query term
+    let queryTerms = [];
     if (condition) {
-        apiParams.append('query.cond', condition);
+        queryTerms.push(condition);
     }
     if (intervention) {
-        apiParams.append('query.intr', intervention);
+        queryTerms.push(intervention);
     }
+    
+    // Use query.term for combined search (more flexible)
+    if (queryTerms.length > 0) {
+        apiParams.append('query.term', queryTerms.join(' '));
+    }
+    
+    // Add location if provided
     if (location) {
         apiParams.append('query.locn', location);
     }
-    
-    // Status filter (default to RECRUITING)
-    const statusValue = (status || 'RECRUITING').toUpperCase();
-    apiParams.append('filter.overallStatus', statusValue);
     
     const apiUrl = `https://clinicaltrials.gov/api/v2/studies?${apiParams.toString()}`;
     console.log('%c📡 API URL:', 'color: #9C27B0;', apiUrl);
@@ -1018,11 +1014,21 @@ async function performClientSideTrialSearch(searchParams) {
         
         const data = await response.json();
         console.log('%c📡 JSON parsed:', 'color: #9C27B0;', 'totalCount:', data.totalCount, 'studies:', data.studies?.length);
-        const studies = data.studies || [];
-        const totalCount = data.totalCount || studies.length;
         
-        console.log('%c✅ Client-side search successful!', 'color: #4CAF50; font-weight: bold;');
-        console.log(`   Found ${totalCount} trials, received ${studies.length}`);
+        let studies = data.studies || [];
+        
+        // Filter for recruiting trials client-side (more reliable than API filter)
+        const recruitingStudies = studies.filter(study => {
+            const studyStatus = study.protocolSection?.statusModule?.overallStatus;
+            return studyStatus === 'RECRUITING' || studyStatus === 'ENROLLING_BY_INVITATION' || studyStatus === 'NOT_YET_RECRUITING';
+        });
+        
+        console.log(`%c✅ Client-side search successful!`, 'color: #4CAF50; font-weight: bold;');
+        console.log(`   Total found: ${data.totalCount}, Received: ${studies.length}, Recruiting: ${recruitingStudies.length}`);
+        
+        // Use filtered recruiting studies
+        studies = recruitingStudies;
+        const totalCount = studies.length;
         
         // Transform API response to our trial format
         const trials = studies.map(study => {
