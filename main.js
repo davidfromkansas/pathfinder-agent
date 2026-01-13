@@ -1043,21 +1043,31 @@ async function performClientSideTrialSearch(searchParams) {
             const eligibilityModule = protocol.eligibilityModule || {};
             const contactsModule = protocol.contactsLocationsModule || {};
             
-            // Extract phases
-            const phases = designModule.phases || [];
+            // Extract phases (ensure array)
+            const phases = Array.isArray(designModule.phases) ? designModule.phases : [];
             const phaseStr = phases.length > 0 ? phases.join(', ') : 'N/A';
             
-            // Extract conditions
-            const conditionsList = conditionsModule.conditions || [];
+            // Extract conditions (ensure array)
+            let conditionsList = conditionsModule.conditions || [];
+            if (!Array.isArray(conditionsList)) {
+                conditionsList = conditionsList ? [String(conditionsList)] : [];
+            }
             const conditionsStr = conditionsList.slice(0, 3).join(', ') || 'Not specified';
             
-            // Extract interventions
-            const interventionsList = (interventionsModule.interventions || []).map(i => i.name);
-            const interventionsStr = interventionsList.slice(0, 3).join(', ') || 'Not specified';
+            // Extract interventions (ensure array)
+            let interventionsList = interventionsModule.interventions || [];
+            if (!Array.isArray(interventionsList)) {
+                interventionsList = [];
+            }
+            const interventionsStr = interventionsList.slice(0, 3).map(i => i?.name || i).filter(Boolean).join(', ') || 'Not specified';
             
-            // Extract locations
-            const locationsList = (contactsModule.locations || []).slice(0, 3);
-            const locationsStr = locationsList.map(loc => {
+            // Extract locations (ensure array)
+            let locationsList = contactsModule.locations || [];
+            if (!Array.isArray(locationsList)) {
+                locationsList = [];
+            }
+            const locationsStr = locationsList.slice(0, 3).map(loc => {
+                if (!loc) return '';
                 const parts = [loc.city, loc.state].filter(Boolean);
                 return parts.join(', ');
             }).filter(Boolean).join('; ') || 'Not specified';
