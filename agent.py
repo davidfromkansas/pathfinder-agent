@@ -6,10 +6,14 @@ import re
 from dotenv import load_dotenv
 load_dotenv()
 
-# Verify API key is available
+# Verify and clean API key (strip whitespace/newlines that can break HTTP headers)
 api_key = os.environ.get("OPENAI_API_KEY")
 if api_key:
-    print(f"[Agent] API key loaded (starts with: {api_key[:8]}...)", flush=True)
+    cleaned_key = api_key.strip()
+    if cleaned_key != api_key:
+        print("[Agent] WARNING: API key had trailing whitespace, cleaned it", flush=True)
+        os.environ["OPENAI_API_KEY"] = cleaned_key
+    print(f"[Agent] API key loaded (starts with: {cleaned_key[:8]}...)", flush=True)
 else:
     print("[Agent] ERROR: OPENAI_API_KEY not found in environment!", flush=True)
 
