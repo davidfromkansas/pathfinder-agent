@@ -913,7 +913,12 @@ function createTrialCard(trial) {
         : '';
     
     // Build condition tags (max 2)
-    const conditionTags = (trial.conditions || [])
+    // Handle both array and string formats
+    let conditionsArray = trial.conditions || [];
+    if (typeof conditionsArray === 'string') {
+        conditionsArray = conditionsArray.split(',').map(c => c.trim()).filter(Boolean);
+    }
+    const conditionTags = conditionsArray
         .slice(0, 2)
         .map(c => `<span class="trial-tag condition">${c}</span>`)
         .join('');
