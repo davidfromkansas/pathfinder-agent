@@ -401,9 +401,8 @@ def _search_legacy_api(condition: str, intervention: str, location: str, status:
             print(f"[Legacy API] Status: {response.status_code}")
             
             if response.status_code == 403:
-                # Both APIs blocked - request client-side search
-                print("[API] Both APIs blocked, requesting client-side search")
-                return _request_client_side_search(condition, intervention, location, status, query_params)
+                # Both APIs blocked - return helpful message
+                return f"SEARCH RESULT: Unable to search. ClinicalTrials.gov is blocking requests from this server. Please visit https://clinicaltrials.gov/search?cond={quote(condition or '')}&locn={quote(location or '')} directly to search."
             
             response.raise_for_status()
             data = response.json()
@@ -471,24 +470,5 @@ def _search_legacy_api(condition: str, intervention: str, location: str, status:
         
     except Exception as e:
         print(f"[Legacy API Error] {str(e)}")
-        return _request_client_side_search(condition, intervention, location, status, query_params)
-
-
-def _request_client_side_search(condition: str, intervention: str, location: str, status: str, query_params: dict) -> str:
-    """
-    Return a special marker that tells the frontend to perform the search client-side.
-    The frontend will detect this and make the API call from the user's browser.
-    """
-    import json
-    
-    search_request = {
-        "__client_side_search__": True,
-        "condition": condition,
-        "intervention": intervention,
-        "location": location,
-        "status": status or "RECRUITING",
-        "query_params": query_params
-    }
-    
-    # Return as a special JSON string that the frontend can detect
-    return f"CLIENT_SIDE_SEARCH_REQUEST:{json.dumps(search_request)}"
+        search_url = f"https://clinicaltrials.gov/search?cond={quote(condition or '')}&locn={quote(location or '')}"
+        return f"SEARCH RESULT: Unable to search ClinicalTrials.gov from this server. Please visit {search_url} directly to search for trials."
