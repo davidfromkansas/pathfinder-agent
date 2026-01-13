@@ -979,23 +979,19 @@ async function performClientSideTrialSearch(searchParams) {
     console.log('   Status:', status);
     
     // Build the API URL for ClinicalTrials.gov API v2
-    // Note: We query broadly and filter for recruiting status client-side
+    // Use field-specific queries for better relevance
     const apiParams = new URLSearchParams();
     apiParams.append('format', 'json');
-    apiParams.append('pageSize', '100'); // Get more results to filter
+    apiParams.append('pageSize', '100');
     
-    // Build combined query term
-    let queryTerms = [];
+    // Use query.cond for condition (searches Condition field specifically)
     if (condition) {
-        queryTerms.push(condition);
-    }
-    if (intervention) {
-        queryTerms.push(intervention);
+        apiParams.append('query.cond', condition);
     }
     
-    // Use query.term for combined search (more flexible)
-    if (queryTerms.length > 0) {
-        apiParams.append('query.term', queryTerms.join(' '));
+    // Use query.intr for intervention (searches Intervention field specifically)
+    if (intervention) {
+        apiParams.append('query.intr', intervention);
     }
     
     // Add location if provided
