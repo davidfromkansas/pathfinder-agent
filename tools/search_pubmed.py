@@ -18,41 +18,41 @@ REQUEST_HEADERS = {
 @function_tool
 def search_pubmed(
     query: str,
-    max_results: int = 50,
-    years_back: int = 5,
-    article_types: Optional[str] = None
+    max_results: int = 15,
+    years_back: int = 3,
+    article_types: Optional[str] = None,
+    high_quality: bool = True
 ) -> str:
     """
-    Search PubMed for research articles to learn about a disease and its treatments.
+    Search PubMed for HIGH-QUALITY research articles on a disease and its treatments.
     
-    PURPOSE: Understand the treatment landscape - what drugs, therapies, and biomarkers 
-    are relevant. Then use that knowledge to search ClinicalTrials.gov for actual trials.
+    PURPOSE: Find the BEST, most relevant research - not the most research.
+    Prioritize review articles and meta-analyses that summarize the field.
     
-    NOTE: PubMed is for RESEARCH ARTICLES, not for finding clinical trials.
-    Do NOT include "clinical trial" or years like "2022 2023 2024" in queries.
+    QUALITY OVER QUANTITY: Run 2-3 focused searches, not 5-7 broad ones.
     
-    IMPORTANT: Run MULTIPLE searches with different queries to be comprehensive:
-    - "[condition]" - general condition research
-    - "[condition] treatment" - treatment approaches
-    - "[condition] therapy" - therapeutic options  
-    - "[condition] [specific drug/therapy]" - specific treatments you learn about
-    - "[condition] review" with article_types="review" - overview articles
+    RECOMMENDED SEARCH STRATEGY:
+    1. "[condition] systematic review" with article_types="review" (BEST - comprehensive summaries)
+    2. "[condition] treatment guidelines" (clinical recommendations)
+    3. "[condition] [specific treatment]" if relevant (targeted research)
     
     Args:
-        query: Simple, focused search query. 
-               GOOD: "[condition]", "[condition] treatment", "[condition] review", "[drug] [condition]"
-               Examples: "breast cancer immunotherapy", "EGFR lung cancer treatment", "type 2 diabetes GLP-1"
-               BAD: "[condition] clinical trial 2022 2023 2024" (returns nothing)
-        max_results: Maximum number of articles to return (default: 50, max: 100)
-        years_back: How many years back to search (default: 5)
-        article_types: Filter by article type. Options: "review" (recommended for overviews), "meta-analysis". 
-                      Leave empty for all types.
+        query: Focused search query. Add "systematic review" or "guidelines" for best results.
+               GOOD: "anaplastic thyroid cancer systematic review", "ATC treatment guidelines"
+               GOOD: "thyroid cancer immunotherapy", "BRAF thyroid cancer"
+               BAD: generic queries without focus
+        max_results: Number of articles (default: 15, max: 30 for quality)
+        years_back: How many years back (default: 3 for recent, relevant research)
+        article_types: "review" (RECOMMENDED), "meta-analysis", or None for all
+        high_quality: If True, adds filters for human studies and major topic focus (default: True)
     
     Returns:
-        Research article summaries ranked by Best Match. Articles are automatically 
-        added to the Research tab - do NOT list them in your chat response.
+        Top research articles ranked by Best Match. Automatically added to Research tab.
     """
-    print(f"[PubMed] Searching: {query}")
+    print(f"[PubMed] Searching: {query} (high_quality={high_quality})")
+    
+    # Cap max_results for quality
+    max_results = min(max_results, 30)
     
     # Build the search query
     search_terms = [query]
@@ -63,13 +63,19 @@ def search_pubmed(
     date_filter = f"{start_date.strftime('%Y/%m/%d')}:{end_date.strftime('%Y/%m/%d')}[dp]"
     search_terms.append(date_filter)
     
+    # Add high-quality filters
+    if high_quality:
+        search_terms.append("humans[mh]")  # Only human studies
+    
     # Add article type filter if specified
     if article_types:
         type_map = {
             "review": "review[pt]",
-            "clinical trial": "clinical trial[pt]",
+            "systematic review": "(systematic review[pt] OR meta-analysis[pt])",
             "meta-analysis": "meta-analysis[pt]",
-            "randomized controlled trial": "randomized controlled trial[pt]"
+            "clinical trial": "clinical trial[pt]",
+            "randomized controlled trial": "randomized controlled trial[pt]",
+            "guidelines": "guideline[pt]"
         }
         if article_types.lower() in type_map:
             search_terms.append(type_map[article_types.lower()])

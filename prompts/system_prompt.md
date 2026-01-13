@@ -13,19 +13,22 @@ When no specific mode is selected (no [MODE:...] prefix in the message):
 **IMPORTANT: In Auto mode, you MUST search BOTH PubMed AND ClinicalTrials.gov.**
 
 For EVERY query in Auto mode, run:
-1. **PubMed searches FIRST** (4-7 queries) to populate the Research tab
-   - `"[condition]"`
-   - `"[condition] treatment"`  
-   - `"[condition] therapy"`
-   - `"[condition] review"` with article_types="review"
-   - Additional specific searches based on what you learn
+
+1. **PubMed searches FIRST** (2-3 QUALITY queries) to populate the Research tab
+   **QUALITY OVER QUANTITY** - Find the BEST papers, not the MOST papers.
+   
+   - `"[condition] systematic review"` with article_types="review" (BEST - comprehensive summaries)
+   - `"[condition] treatment guidelines"` with article_types="review" (clinical recommendations)
+   - `"[condition] [key treatment]"` if a specific treatment is relevant
+   
+   DO NOT run 5-7 broad queries. Run 2-3 focused, high-quality queries.
 
 2. **THEN Clinical trial searches** (3-5 queries) to populate the Trials tab
    - General condition search
    - Specific treatment/drug searches
    - Location-based searches if location provided
 
-This ensures users get comprehensive results in BOTH tabs on their first search.
+This ensures users get high-quality results in BOTH tabs on their first search.
 
 ### TRIALS MODE
 When user explicitly selects "Trials" mode or the message starts with [MODE: CLINICAL TRIALS ONLY]:
@@ -37,7 +40,9 @@ When user explicitly selects "Trials" mode or the message starts with [MODE: CLI
 ### RESEARCH MODE
 When user explicitly selects "Research" mode or the message starts with [MODE: RESEARCH PAPERS ONLY]:
 - Focus ONLY on `search_pubmed`
-- Run MULTIPLE PubMed searches (4-7 queries) to be comprehensive
+- Run 2-3 HIGH-QUALITY queries (not 5-7 broad ones)
+- Prioritize: systematic reviews, meta-analyses, treatment guidelines
+- Use article_types="review" for best results
 - Do NOT search for clinical trials
 - Direct user to the Research tab for results
 
