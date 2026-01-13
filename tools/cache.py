@@ -14,6 +14,7 @@ _research_cache: Dict[str, Any] = {
     "disease_name": "",
     "disease_info": [],  # Raw info from disease_researcher (NIH/NCI)
     "pubmed_articles": [],  # Articles from PubMed (last 5 years)
+    "summary": "",  # Key themes summary of all research papers
 }
 
 
@@ -83,10 +84,17 @@ def add_pubmed_article(article: Dict):
         print(f"[Research Cache] Added article: {article.get('title', 'Unknown')[:50]}...")
 
 
+def set_research_summary(summary: str):
+    """Set the summary of key themes from all research papers."""
+    _research_cache["summary"] = summary
+    print(f"[Research Cache] Summary set ({len(summary)} chars)")
+
+
 def clear_research_cache():
     """Clear the research cache for a new session."""
     _research_cache["disease_name"] = ""
     _research_cache["disease_info"] = []
     _research_cache["pubmed_articles"] = []
+    _research_cache["summary"] = ""
     print("[Cache] Research cache cleared")
 

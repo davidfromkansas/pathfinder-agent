@@ -281,6 +281,7 @@ async function sendMessageToAgent(message) {
                                     diseaseName: parsed.data.disease_name || '',
                                     diseaseInfo: parsed.data.disease_info || [],
                                     pubmedArticles: parsed.data.pubmed_articles || [],
+                                    summary: parsed.data.summary || '',
                                 };
                                 console.log('%c📚 Research cache received:', 'color: #9C27B0; font-weight: bold;', 
                                     `${researchCache.pubmedArticles.length} articles`);
@@ -870,7 +871,24 @@ function showResearchPage(cache) {
         return;
     }
     
+    // Generate summary from article titles if not provided
+    const summary = cache.summary || generateResearchSummary(cache.pubmedArticles);
+    
     let html = '<div class="research-content">';
+    
+    // Summary section
+    if (summary) {
+        html += `
+            <div class="research-summary-section">
+                <h3 class="research-summary-title">
+                    <span class="section-icon">📋</span>
+                    Key Research Themes
+                </h3>
+                <div class="research-summary-content">${summary}</div>
+            </div>
+        `;
+    }
+    
     html += `
         <div class="research-section">
             <h3 class="research-section-title">
@@ -906,6 +924,47 @@ function showResearchPage(cache) {
     // Show the results page if not already visible
     trialResultsPage.classList.remove('hidden');
     conversationView.classList.add('has-results');
+}
+
+function generateResearchSummary(articles) {
+    if (!articles || articles.length === 0) return '';
+    
+    // Extract key terms from article titles
+    const titles = articles.map(a => a.title || '').filter(Boolean);
+    if (titles.length === 0) return '';
+    
+    // Simple keyword extraction and grouping
+    const allWords = titles.join(' ').toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 4); // Filter short words
+    
+    // Count word frequency
+    const wordFreq = {};
+    allWords.forEach(word => {
+        wordFreq[word] = (wordFreq[word] || 0) + 1;
+    });
+    
+    // Get top themes (excluding common words)
+    const commonWords = new Set(['treatment', 'therapy', 'clinical', 'patients', 'study', 'research', 'analysis', 'review', 'systematic', 'meta']);
+    const themes = Object.entries(wordFreq)
+        .filter(([word]) => !commonWords.has(word))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([word]) => word.charAt(0).toUpperCase() + word.slice(1));
+    
+    // Build summary
+    const summaryParts = [];
+    summaryParts.push(`Based on ${articles.length} research articles, the key themes include:`);
+    summaryParts.push(`• ${themes.join(', ')}`);
+    
+    // Add article type breakdown
+    const reviewCount = articles.filter(a => a.type && a.type.toLowerCase().includes('review')).length;
+    if (reviewCount > 0) {
+        summaryParts.push(`• ${reviewCount} systematic reviews and meta-analyses provide comprehensive summaries`);
+    }
+    
+    return summaryParts.join('\n');
 }
 
 function createTrialCard(trial) {
