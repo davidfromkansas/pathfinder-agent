@@ -73,7 +73,18 @@ async def search(request: Request):
                 elif event_type == 'tool_call':
                     yield f"data: {json.dumps({'type': 'tool_call', 'name': data['name'], 'arguments': data['arguments']})}\n\n"
                 elif event_type == 'tool_output':
-                    yield f"data: {json.dumps({'type': 'tool_output', 'output': data['output'], 'tool_name': data.get('tool_name')})}\n\n"
+                    output = data['output']
+                    # Check if this is a client-side search request (server blocked by ClinicalTrials.gov)
+                    if output.startswith('__CLIENT_SEARCH__:'):
+                        try:
+                            search_json = output.replace('__CLIENT_SEARCH__:', '')
+                            search_data = json.loads(search_json)
+                            print(f"[Server] Forwarding client-side search request: {search_data.get('condition')}", flush=True)
+                            yield f"data: {json.dumps({'type': 'client_search', 'search': search_data})}\n\n"
+                        except json.JSONDecodeError:
+                            yield f"data: {json.dumps({'type': 'tool_output', 'output': output, 'tool_name': data.get('tool_name')})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'type': 'tool_output', 'output': output, 'tool_name': data.get('tool_name')})}\n\n"
             print("\n[Server] Stream finished, getting caches...", flush=True)
             
             # Send the research cache (for Research tab - first-line treatments)

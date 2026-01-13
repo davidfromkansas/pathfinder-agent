@@ -401,8 +401,9 @@ def _search_legacy_api(condition: str, intervention: str, location: str, status:
             print(f"[Legacy API] Status: {response.status_code}")
             
             if response.status_code == 403:
-                # Both APIs blocked - return helpful message
-                return f"SEARCH RESULT: Unable to search. ClinicalTrials.gov is blocking requests from this server. Please visit https://clinicaltrials.gov/search?cond={quote(condition or '')}&locn={quote(location or '')} directly to search."
+                # Both APIs blocked - request client-side search
+                print("[API] Both APIs blocked (403), requesting client-side search")
+                return _create_client_side_search_request(condition, intervention, location, status, query_params)
             
             response.raise_for_status()
             data = response.json()
@@ -470,5 +471,26 @@ def _search_legacy_api(condition: str, intervention: str, location: str, status:
         
     except Exception as e:
         print(f"[Legacy API Error] {str(e)}")
-        search_url = f"https://clinicaltrials.gov/search?cond={quote(condition or '')}&locn={quote(location or '')}"
-        return f"SEARCH RESULT: Unable to search ClinicalTrials.gov from this server. Please visit {search_url} directly to search for trials."
+        # Fallback to client-side search
+        return _create_client_side_search_request(condition, intervention, location, status, query_params)
+
+
+def _create_client_side_search_request(condition: str, intervention: str, location: str, status: str, query_params: dict) -> str:
+    """
+    Create a special marker that tells the frontend to perform the search client-side.
+    The frontend will detect this marker and make the API call from the user's browser.
+    """
+    import json
+    
+    search_request = {
+        "condition": condition or "",
+        "intervention": intervention or "",
+        "location": location or "",
+        "status": status or "RECRUITING",
+        "query_params": query_params
+    }
+    
+    print(f"[Client-Side Search] Requesting browser search for: {condition}, {location}")
+    
+    # Return as a special JSON string that server.py will detect and forward to frontend
+    return f"__CLIENT_SEARCH__:{json.dumps(search_request)}"
