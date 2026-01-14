@@ -1459,15 +1459,6 @@ footer {
         max-width: 90%;
     }
     
-    .trial-card {
-        padding: 1rem;
-    }
-    
-    .trial-title {
-        font-size: 0.9rem;
-    }
-}
-
 /* Trial Details Sheet */
 .trial-details-sheet {
     position: fixed;
@@ -1477,14 +1468,12 @@ footer {
     bottom: 0;
     z-index: 1000;
     display: none;
-    pointer-events: none;
-    visibility: hidden;
+    align-items: flex-end;
+    justify-content: center;
 }
 
-.trial-details-sheet.open {
+.trial-details-sheet.active {
     display: flex;
-    pointer-events: all;
-    visibility: visible;
 }
 
 .sheet-overlay {
@@ -1499,18 +1488,17 @@ footer {
 }
 
 .sheet-content {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-    max-width: 600px;
+    position: relative;
     background: #fff;
-    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0;
     display: flex;
     flex-direction: column;
-    animation: slideInRight 0.3s ease;
-    overflow: hidden;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.3s ease;
+    z-index: 1001;
 }
 
 @keyframes fadeIn {
@@ -1518,9 +1506,13 @@ footer {
     to { opacity: 1; }
 }
 
-@keyframes slideInRight {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
 }
 
 .sheet-header {
@@ -1535,7 +1527,7 @@ footer {
 .sheet-title {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text);
     margin: 0;
 }
 
@@ -1554,13 +1546,14 @@ footer {
 
 .sheet-close:hover {
     background: var(--bg);
-    color: var(--text-primary);
+    color: var(--text);
 }
 
 .sheet-body {
-    flex: 1;
-    overflow-y: auto;
     padding: 2rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .sheet-footer {
@@ -1570,27 +1563,31 @@ footer {
 }
 
 .sheet-button-primary {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     padding: 0.875rem 1.5rem;
     background: var(--accent);
     color: #fff;
-    text-align: center;
     text-decoration: none;
-    font-weight: 500;
     border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
     transition: all 0.2s ease;
 }
 
 .sheet-button-primary:hover {
     background: #0056b3;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
 }
 
-/* Mobile responsiveness for sheet */
-@media (max-width: 768px) {
-    .sheet-content {
-        max-width: 100%;
+    .trial-card {
+        padding: 1rem;
+    }
+    
+    .trial-title {
+        font-size: 0.9rem;
     }
 }

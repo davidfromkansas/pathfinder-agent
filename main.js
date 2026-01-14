@@ -1031,30 +1031,33 @@ function createTrialCard(trial) {
 function openTrialDetailsSheet(trial) {
     const sheet = document.getElementById('trialDetailsSheet');
     const sheetBody = sheet.querySelector('.sheet-body');
-    const detailsLink = document.getElementById('trialDetailsLink');
+    const linkButton = document.getElementById('trialDetailsLink');
     
     // Set the link to ClinicalTrials.gov
     const trialUrl = trial.link || `https://clinicaltrials.gov/study/${trial.nct_id}`;
-    detailsLink.href = trialUrl;
+    linkButton.href = trialUrl;
     
-    // Clear and populate sheet body (blank for now as requested)
+    // Clear body content for now (will be populated later)
     sheetBody.innerHTML = '';
     
-    // Open the sheet
-    sheet.classList.add('open');
+    // Show the sheet
+    sheet.classList.add('active');
     document.body.style.overflow = 'hidden'; // Prevent background scrolling
 }
 
 function closeTrialDetailsSheet() {
     const sheet = document.getElementById('trialDetailsSheet');
-    sheet.classList.remove('open');
+    sheet.classList.remove('active');
     document.body.style.overflow = ''; // Restore scrolling
 }
 
 // Close sheet on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        closeTrialDetailsSheet();
+        const sheet = document.getElementById('trialDetailsSheet');
+        if (sheet.classList.contains('active')) {
+            closeTrialDetailsSheet();
+        }
     }
 });
 
