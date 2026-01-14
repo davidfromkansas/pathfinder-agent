@@ -1437,28 +1437,6 @@ footer {
     }
 }
 
-@media (max-width: 640px) {
-    header {
-        padding: 1rem 1.5rem;
-    }
-
-    nav {
-        display: none;
-    }
-
-    .landing-view {
-        padding: 1.5rem;
-        margin-top: 0;
-    }
-
-    .chat-panel {
-        padding: 0 1rem;
-    }
-
-    .message {
-        max-width: 90%;
-    }
-    
 /* Trial Details Sheet */
 .trial-details-sheet {
     position: fixed;
@@ -1583,6 +1561,28 @@ footer {
     box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
 }
 
+@media (max-width: 640px) {
+    header {
+        padding: 1rem 1.5rem;
+    }
+
+    nav {
+        display: none;
+    }
+
+    .landing-view {
+        padding: 1.5rem;
+        margin-top: 0;
+    }
+
+    .chat-panel {
+        padding: 0 1rem;
+    }
+
+    .message {
+        max-width: 90%;
+    }
+    
     .trial-card {
         padding: 1rem;
     }
