@@ -1478,11 +1478,13 @@ footer {
     z-index: 1000;
     display: none;
     pointer-events: none;
+    visibility: hidden;
 }
 
 .trial-details-sheet.open {
     display: flex;
     pointer-events: all;
+    visibility: visible;
 }
 
 .sheet-overlay {
