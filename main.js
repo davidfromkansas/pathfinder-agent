@@ -1014,15 +1014,49 @@ function createTrialCard(trial) {
         </div>
     `;
     
-    // Make entire card clickable
+    // Make entire card clickable - open details sheet
     card.addEventListener('click', (e) => {
         if (e.target.tagName !== 'A') {
-            window.open(trialUrl, '_blank', 'noopener,noreferrer');
+            openTrialDetailsSheet(trial);
         }
     });
     
     return card;
 }
+
+// ========================================
+// Trial Details Sheet
+// ========================================
+
+function openTrialDetailsSheet(trial) {
+    const sheet = document.getElementById('trialDetailsSheet');
+    const sheetBody = sheet.querySelector('.sheet-body');
+    const detailsLink = document.getElementById('trialDetailsLink');
+    
+    // Set the link to ClinicalTrials.gov
+    const trialUrl = trial.link || `https://clinicaltrials.gov/study/${trial.nct_id}`;
+    detailsLink.href = trialUrl;
+    
+    // Clear and populate sheet body (blank for now as requested)
+    sheetBody.innerHTML = '';
+    
+    // Open the sheet
+    sheet.classList.add('open');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeTrialDetailsSheet() {
+    const sheet = document.getElementById('trialDetailsSheet');
+    sheet.classList.remove('open');
+    document.body.style.overflow = ''; // Restore scrolling
+}
+
+// Close sheet on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeTrialDetailsSheet();
+    }
+});
 
 // Expose trialCache globally for debugging in console
 window.trialCache = trialCache;

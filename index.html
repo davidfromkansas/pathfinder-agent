@@ -157,6 +157,30 @@
         © 2026 Pathfinder AI
     </footer>
 
+    <!-- Trial Details Sheet -->
+    <div id="trialDetailsSheet" class="trial-details-sheet">
+        <div class="sheet-overlay" onclick="closeTrialDetailsSheet()"></div>
+        <div class="sheet-content">
+            <div class="sheet-header">
+                <h2 class="sheet-title">Trial Details</h2>
+                <button class="sheet-close" onclick="closeTrialDetailsSheet()" aria-label="Close">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="sheet-body">
+                <!-- Content will be populated here -->
+            </div>
+            <div class="sheet-footer">
+                <a id="trialDetailsLink" href="#" target="_blank" rel="noopener noreferrer" class="sheet-button-primary">
+                    View Full Details on ClinicalTrials.gov →
+                </a>
+            </div>
+        </div>
+    </div>
+
     <script src="main.js"></script>
 </body>
 </html>
