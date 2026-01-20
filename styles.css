@@ -1446,7 +1446,7 @@ footer {
     bottom: 0;
     z-index: 1000;
     display: none;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
 }
 
@@ -1471,11 +1471,11 @@ footer {
     width: 100%;
     max-width: 800px;
     max-height: 90vh;
-    border-radius: 20px 20px 0 0;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
-    animation: slideUp 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: fadeInScale 0.3s ease;
     z-index: 1001;
 }
 
@@ -1484,12 +1484,14 @@ footer {
     to { opacity: 1; }
 }
 
-@keyframes slideUp {
+@keyframes fadeInScale {
     from {
-        transform: translateY(100%);
+        opacity: 0;
+        transform: scale(0.95);
     }
     to {
-        transform: translateY(0);
+        opacity: 1;
+        transform: scale(1);
     }
 }
 
