@@ -1080,9 +1080,11 @@ async function openTrialDetailsSheet(trial) {
 
 async function fetchTrialDetails(nctId) {
     // Fetch from ClinicalTrials.gov API v2
-    // Remove "NCT" prefix if present
-    const cleanNctId = nctId.replace(/^NCT/i, '');
-    const apiUrl = `https://clinicaltrials.gov/api/v2/studies/${cleanNctId}`;
+    // Ensure NCT ID has the "NCT" prefix
+    const fullNctId = nctId.startsWith('NCT') ? nctId : `NCT${nctId}`;
+    
+    // Use query parameter format instead of path parameter
+    const apiUrl = `https://clinicaltrials.gov/api/v2/studies?filter.ids=${fullNctId}`;
     
     console.log('%c🔍 Fetching trial details:', 'color: #9C27B0; font-weight: bold;', apiUrl);
     
@@ -1097,7 +1099,13 @@ async function fetchTrialDetails(nctId) {
     
     const data = await response.json();
     console.log('%c✅ Trial details fetched:', 'color: #4CAF50; font-weight: bold;', data);
-    return data;
+    
+    // Extract the first study from the studies array
+    if (data.studies && data.studies.length > 0) {
+        return data.studies[0];
+    } else {
+        throw new Error('No trial found with that NCT ID');
+    }
 }
 
 async function generateTrialSummary(trialDetails) {
