@@ -186,6 +186,68 @@ Provide only the summary in paragraph form, no additional commentary."""
     )
 
 
+@app.post("/personalized-recommendation")
+async def personalized_recommendation(request: Request):
+    """Generate a personalized recommendation for whether a trial is relevant to the user."""
+    data = await request.json()
+    user_query = data.get("user_query", "")
+    trial_title = data.get("trial_title", "")
+    trial_conditions = data.get("trial_conditions", "")
+    trial_interventions = data.get("trial_interventions", "")
+    trial_summary = data.get("trial_summary", "")
+    eligibility_criteria = data.get("eligibility_criteria", "")
+    
+    if not user_query:
+        return {"error": "No user query provided"}
+    
+    # Create a prompt for personalized recommendation
+    prompt = f"""Based on the user's search query and this clinical trial, provide a personalized recommendation on whether this trial might be relevant to them.
+
+User's search: "{user_query}"
+
+Trial Information:
+- Title: {trial_title}
+- Conditions: {trial_conditions}
+- Treatments: {trial_interventions}
+- Summary: {trial_summary}
+
+Write a recommendation (maximum 250 words) in paragraph form that:
+- Assesses whether this trial matches what the user is looking for
+- Explains why it might or might not be a good fit
+- Mentions any key eligibility considerations if relevant
+- Uses simple, non-technical language
+- Be honest if the trial doesn't seem relevant - don't force a match
+
+Write in paragraph form (NO bullet points). Be concise and helpful."""
+
+    async def generate():
+        try:
+            word_count = 0
+            async for event_type, event_data in get_agent_response_stream(prompt, session_id=None, mode="auto"):
+                if event_type == 'text':
+                    yield f"data: {json.dumps({'type': 'text', 'content': event_data})}\n\n"
+                    word_count += len(event_data.split())
+                    if word_count >= 250:
+                        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                        return
+            
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except Exception as e:
+            print(f"[Server] Error generating recommendation: {str(e)}", flush=True)
+            import traceback
+            traceback.print_exc()
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=3000)

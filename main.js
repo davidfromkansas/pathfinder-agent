@@ -39,6 +39,12 @@ let researchCache = {
     firstLineTreatments: []
 };
 
+// Store user's current condition/query for personalized recommendations
+let userCondition = '';
+
+// Track the most recent user query from the conversation
+let lastUserQuery = '';
+
 // Simple markdown parser for assistant messages
 function parseMarkdown(text) {
     if (!text) return '';
@@ -176,6 +182,10 @@ function setInputDisabled(disabled) {
 
 // Send message to agent with streaming
 async function sendMessageToAgent(message) {
+    // Store the user's query for personalized recommendations
+    lastUserQuery = message;
+    userCondition = message;
+    
     // Disable input while streaming
     setInputDisabled(true);
     
@@ -1069,6 +1079,9 @@ async function openTrialDetailsSheet(trial) {
         if (summaryDiv) {
             summaryDiv.textContent = summary;
         }
+        
+        // Generate personalized recommendation (streaming)
+        await generatePersonalizedRecommendation(trialDetails, summary, sheetBody);
     } catch (error) {
         console.error('%c❌ Error loading trial details:', 'color: #F44336; font-weight: bold;', error);
         console.error('Error details:', error.message, error.stack);
@@ -1199,7 +1212,7 @@ function displayTrialDetailsHeader(trial) {
     // Keep header title as "Trial Details"
     sheetTitle.textContent = 'Trial Details';
     
-    // Display content with title and placeholder for streaming summary
+    // Display content with title and placeholder for streaming summary and recommendation
     sheetBody.innerHTML = `
         <div class="trial-details-content">
             <div class="trial-details-section">
@@ -1209,8 +1222,107 @@ function displayTrialDetailsHeader(trial) {
                 <h3 class="trial-details-section-title">Study Summary</h3>
                 <div class="trial-details-summary"></div>
             </div>
+            <div class="trial-details-section">
+                <h3 class="trial-details-section-title">Personalized Recommendation</h3>
+                <div class="trial-details-recommendation"></div>
+            </div>
         </div>
     `;
+}
+
+async function generatePersonalizedRecommendation(trialDetails, summary, sheetBody) {
+    // Get user's condition/query
+    const userQuery = lastUserQuery || userCondition || 'the condition you searched for';
+    
+    // Extract key trial info
+    const protocol = trialDetails.protocolSection || {};
+    const idModule = protocol.identificationModule || {};
+    const conditionsModule = protocol.conditionsModule || {};
+    const interventionsModule = protocol.armsInterventionsModule || {};
+    const eligibilityModule = protocol.eligibilityModule || {};
+    
+    const trialConditions = (conditionsModule.conditions || []).join(', ');
+    const trialInterventions = (interventionsModule.interventions || []).map(i => i.name).join(', ');
+    const eligibility = eligibilityModule.eligibilityCriteria || '';
+    
+    console.log('%c💡 Generating personalized recommendation...', 'color: #9C27B0; font-weight: bold;');
+    
+    const recommendationDiv = sheetBody.querySelector('.trial-details-recommendation');
+    if (recommendationDiv) {
+        recommendationDiv.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Analyzing relevance...</div>';
+    }
+    
+    try {
+        const response = await fetch('/personalized-recommendation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_query: userQuery,
+                trial_title: idModule.briefTitle || '',
+                trial_conditions: trialConditions,
+                trial_interventions: trialInterventions,
+                trial_summary: summary,
+                eligibility_criteria: eligibility.substring(0, 500) // Limit length
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to generate recommendation: ${response.status}`);
+        }
+        
+        // Stream the recommendation
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let recommendationText = '';
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    try {
+                        const parsed = JSON.parse(data);
+                        
+                        if (parsed.type === 'text') {
+                            recommendationText += parsed.content;
+                            // Update the recommendation in real-time
+                            if (recommendationDiv) {
+                                recommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${recommendationText}</div>`;
+                            }
+                        } else if (parsed.type === 'done') {
+                            console.log('%c✅ Recommendation streaming complete:', 'color: #4CAF50; font-weight: bold;');
+                            return recommendationText.trim();
+                        } else if (parsed.type === 'error') {
+                            throw new Error(parsed.message);
+                        }
+                    } catch (e) {
+                        // Skip invalid JSON
+                    }
+                }
+            }
+        }
+        
+        // Final update
+        if (recommendationDiv) {
+            recommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${recommendationText.trim()}</div>`;
+        }
+        
+        return recommendationText.trim();
+    } catch (error) {
+        console.error('Error generating recommendation:', error);
+        if (recommendationDiv) {
+            recommendationDiv.innerHTML = '<div style="color: var(--text-muted);">Unable to generate personalized recommendation at this time.</div>';
+        }
+    }
 }
 
 function closeTrialDetailsSheet() {
