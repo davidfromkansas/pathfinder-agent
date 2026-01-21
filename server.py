@@ -211,6 +211,7 @@ Trial Information:
 
 IMPORTANT: 
 - Do NOT restate the user's search query or condition - jump straight to the recommendation
+- Format as an easy-to-read checklist
 - Focus on whether this trial is a good fit and why
 - Reference specific eligibility criteria that are relevant (age, disease stage, prior treatments, etc.)
 - Highlight any potential eligibility barriers or requirements
@@ -218,13 +219,24 @@ IMPORTANT:
 - Use simple, non-technical language
 - Be honest if the trial doesn't seem relevant - don't force a match
 
-Write a recommendation (maximum 250 words) in paragraph form that:
-- Directly states whether this trial is relevant (don't repeat the user's condition)
-- Explains why it might or might not be a good fit
-- Mentions specific eligibility requirements or barriers
-- Uses simple, non-technical language
+Write a recommendation (maximum 250 words) in CHECKLIST FORMAT using markdown checkboxes:
+- Start with a brief statement (1-2 sentences) about whether this trial is relevant
+- Then use a checklist format with items like:
+  - [✓] or [✗] or [-] to indicate match/mismatch/uncertainty
+  - Each item should be a concise point about relevance, eligibility, or fit
+  - Focus on key factors: condition match, treatment relevance, eligibility requirements, potential barriers
+- Use simple, non-technical language
+- Keep each checklist item to one line when possible
 
-Write in paragraph form (NO bullet points). Be concise and direct - focus on the recommendation itself."""
+Example format:
+This trial [is/is not] a good match for your search. Here's why:
+
+[✓] Matches your condition: [brief explanation]
+[✓] Treatment approach: [brief explanation]
+[-] Eligibility consideration: [brief explanation]
+[✗] Potential barrier: [brief explanation]
+
+Write in checklist format - be concise and direct."""
 
     async def generate():
         try:

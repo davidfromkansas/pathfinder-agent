@@ -69,9 +69,24 @@ function parseMarkdown(text) {
     let inList = false;
     
     for (let line of lines) {
-        // Check if line is a bullet point
-        const bulletMatch = line.match(/^(\s*)-\s+(.+)$/);
-        if (bulletMatch) {
+        // Check if line is a checklist item with [✓], [✗], or [-]
+        const checklistMatch = line.match(/^(\s*)(\[✓\]|\[✗\]|\[-\])\s+(.+)$/);
+        if (checklistMatch) {
+            if (!inList) {
+                processedLines.push('<ul class="checklist">');
+                inList = true;
+            }
+            const symbol = checklistMatch[2];
+            const text = checklistMatch[3];
+            // Map symbols to classes for styling
+            let symbolClass = 'checklist-neutral';
+            if (symbol === '[✓]') symbolClass = 'checklist-match';
+            else if (symbol === '[✗]') symbolClass = 'checklist-mismatch';
+            processedLines.push(`<li class="${symbolClass}"><span class="checklist-symbol">${symbol}</span> ${text}</li>`);
+        }
+        // Check if line is a regular bullet point
+        else if (line.match(/^(\s*)-\s+(.+)$/)) {
+            const bulletMatch = line.match(/^(\s*)-\s+(.+)$/);
             if (!inList) {
                 processedLines.push('<ul>');
                 inList = true;
@@ -1299,9 +1314,9 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
                         
                         if (parsed.type === 'text') {
                             recommendationText += parsed.content;
-                            // Update the recommendation in real-time
+                            // Update the recommendation in real-time with markdown parsing
                             if (recommendationDiv) {
-                                recommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${recommendationText}</div>`;
+                                recommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${parseMarkdown(recommendationText)}</div>`;
                             }
                         } else if (parsed.type === 'done') {
                             console.log('%c✅ Recommendation streaming complete:', 'color: #4CAF50; font-weight: bold;');
