@@ -1068,8 +1068,8 @@ async function openTrialDetailsSheet(trial) {
                              trialDetails.protocolSection?.identificationModule?.officialTitle || 
                              trial.title;
         
-        // Display title first
-        displayTrialDetailsHeader({ ...trial, title: officialTitle });
+        // Display title first with highlight info
+        displayTrialDetailsHeader({ ...trial, title: officialTitle }, trialDetails);
         
         // Generate both summary and recommendation in parallel
         const summaryPromise = generateTrialSummary(trialDetails, sheetBody);
@@ -1208,18 +1208,84 @@ async function generateTrialSummary(trialDetails, sheetBody) {
     return summaryText.trim();
 }
 
-function displayTrialDetailsHeader(trial) {
+function displayTrialDetailsHeader(trial, trialDetails = null) {
     const sheetBody = document.querySelector('.sheet-body');
     const sheetTitle = document.querySelector('.sheet-title');
     
     // Keep header title as "Trial Details"
     sheetTitle.textContent = 'Trial Details';
     
-    // Display content with title and tabs
+    // Extract highlight info from trialDetails if available
+    let sponsor = 'Not specified';
+    let recruitingStatus = 'Unknown';
+    let phase = 'N/A';
+    let studyDuration = 'Not specified';
+    
+    if (trialDetails) {
+        const protocol = trialDetails.protocolSection || {};
+        const sponsorModule = protocol.sponsorCollaboratorsModule || {};
+        const statusModule = protocol.statusModule || {};
+        const designModule = protocol.designModule || {};
+        
+        // Sponsor
+        const leadSponsor = sponsorModule.leadSponsor || {};
+        sponsor = leadSponsor.name || 'Not specified';
+        
+        // Recruiting Status
+        recruitingStatus = statusModule.overallStatus || 'Unknown';
+        
+        // Phase
+        const phases = designModule.phases || [];
+        phase = phases.length > 0 ? phases.join(', ') : 'N/A';
+        
+        // Study Duration (combine start and completion dates)
+        const startDateStruct = statusModule.startDateStruct || {};
+        const completionDateStruct = statusModule.completionDateStruct || {};
+        
+        const startDate = startDateStruct.date || null;
+        const completionDate = completionDateStruct.date || null;
+        
+        if (startDate && completionDate) {
+            // Format dates nicely
+            const start = new Date(startDate);
+            const end = new Date(completionDate);
+            const startFormatted = start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            const endFormatted = end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            studyDuration = `${startFormatted} - ${endFormatted}`;
+        } else if (startDate) {
+            const start = new Date(startDate);
+            const startFormatted = start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            studyDuration = `Started ${startFormatted}`;
+        } else if (completionDate) {
+            const end = new Date(completionDate);
+            const endFormatted = end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            studyDuration = `Completes ${endFormatted}`;
+        }
+    }
+    
+    // Display content with title, highlight info, and tabs
     sheetBody.innerHTML = `
         <div class="trial-details-content">
             <div class="trial-details-section">
                 <h2 class="trial-details-main-title">${trial.title || 'Untitled Trial'}</h2>
+                <div class="trial-details-highlights">
+                    <div class="trial-details-highlight-item">
+                        <span class="trial-details-highlight-label">Sponsor:</span>
+                        <span class="trial-details-highlight-value">${sponsor}</span>
+                    </div>
+                    <div class="trial-details-highlight-item">
+                        <span class="trial-details-highlight-label">Recruiting Status:</span>
+                        <span class="trial-details-highlight-value">${recruitingStatus}</span>
+                    </div>
+                    <div class="trial-details-highlight-item">
+                        <span class="trial-details-highlight-label">Phase:</span>
+                        <span class="trial-details-highlight-value">${phase}</span>
+                    </div>
+                    <div class="trial-details-highlight-item">
+                        <span class="trial-details-highlight-label">Study Duration:</span>
+                        <span class="trial-details-highlight-value">${studyDuration}</span>
+                    </div>
+                </div>
             </div>
             <div class="trial-details-tabs">
                 <button class="trial-details-tab active" data-tab="summary" onclick="switchTrialDetailsTab('summary')">
