@@ -1053,11 +1053,16 @@ async function openTrialDetailsSheet(trial) {
         // Fetch full trial details from ClinicalTrials.gov API
         const trialDetails = await fetchTrialDetails(trial.nct_id);
         
+        // Get official title from API response
+        const officialTitle = trialDetails.protocolSection?.identificationModule?.briefTitle || 
+                             trialDetails.protocolSection?.identificationModule?.officialTitle || 
+                             trial.title;
+        
         // Generate AI summary
         const summary = await generateTrialSummary(trialDetails);
         
-        // Display content
-        displayTrialDetails(trial, summary);
+        // Display content with official title
+        displayTrialDetails({ ...trial, title: officialTitle }, summary);
     } catch (error) {
         console.error('Error loading trial details:', error);
         sheetBody.innerHTML = `
