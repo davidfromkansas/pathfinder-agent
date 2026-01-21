@@ -1058,11 +1058,17 @@ async function openTrialDetailsSheet(trial) {
                              trialDetails.protocolSection?.identificationModule?.officialTitle || 
                              trial.title;
         
-        // Generate AI summary
-        const summary = await generateTrialSummary(trialDetails);
+        // Display title first, then stream summary
+        displayTrialDetailsHeader({ ...trial, title: officialTitle });
         
-        // Display content with official title
-        displayTrialDetails({ ...trial, title: officialTitle }, summary);
+        // Generate AI summary (streaming)
+        const summary = await generateTrialSummary(trialDetails, sheetBody);
+        
+        // Final update to summary (in case there's any remaining text)
+        const summaryDiv = sheetBody.querySelector('.trial-details-summary');
+        if (summaryDiv) {
+            summaryDiv.textContent = summary;
+        }
     } catch (error) {
         console.error('%c❌ Error loading trial details:', 'color: #F44336; font-weight: bold;', error);
         console.error('Error details:', error.message, error.stack);
@@ -1108,7 +1114,7 @@ async function fetchTrialDetails(nctId) {
     }
 }
 
-async function generateTrialSummary(trialDetails) {
+async function generateTrialSummary(trialDetails, sheetBody) {
     // Extract study overview from the API response
     const protocol = trialDetails.protocolSection || {};
     const descriptionModule = protocol.descriptionModule || {};
@@ -1119,8 +1125,8 @@ async function generateTrialSummary(trialDetails) {
     
     console.log('%c📝 Study overview extracted:', 'color: #2196F3; font-weight: bold;', studyOverview.substring(0, 200) + '...');
     
-    // Send to server to generate AI summary
-    console.log('%c🤖 Generating AI summary...', 'color: #FF9800; font-weight: bold;');
+    // Send to server to generate AI summary (streaming)
+    console.log('%c🤖 Generating AI summary (streaming)...', 'color: #FF9800; font-weight: bold;');
     const response = await fetch('/summarize-trial', {
         method: 'POST',
         headers: {
@@ -1138,23 +1144,62 @@ async function generateTrialSummary(trialDetails) {
         throw new Error(`Failed to generate summary: ${response.status}`);
     }
     
-    const data = await response.json();
-    if (data.error) {
-        throw new Error(data.error);
+    // Stream the summary
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let summaryText = '';
+    
+    // Update loading message to show we're generating
+    const summarySection = sheetBody.querySelector('.trial-details-summary') || sheetBody;
+    if (summarySection) {
+        summarySection.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Generating summary...</div>';
     }
     
-    console.log('%c✅ Summary generated:', 'color: #4CAF50; font-weight: bold;', data.summary.substring(0, 100) + '...');
-    return data.summary;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                try {
+                    const parsed = JSON.parse(data);
+                    
+                    if (parsed.type === 'text') {
+                        summaryText += parsed.content;
+                        // Update the summary in real-time
+                        if (summarySection) {
+                            summarySection.innerHTML = `<div class="trial-details-summary">${summaryText}</div>`;
+                        }
+                    } else if (parsed.type === 'done') {
+                        console.log('%c✅ Summary streaming complete:', 'color: #4CAF50; font-weight: bold;');
+                        return summaryText.trim();
+                    } else if (parsed.type === 'error') {
+                        throw new Error(parsed.message);
+                    }
+                } catch (e) {
+                    // Skip invalid JSON
+                }
+            }
+        }
+    }
+    
+    return summaryText.trim();
 }
 
-function displayTrialDetails(trial, summary) {
+function displayTrialDetailsHeader(trial) {
     const sheetBody = document.querySelector('.sheet-body');
     const sheetTitle = document.querySelector('.sheet-title');
     
     // Keep header title as "Trial Details"
     sheetTitle.textContent = 'Trial Details';
     
-    // Display content with title and summary
+    // Display content with title and placeholder for streaming summary
     sheetBody.innerHTML = `
         <div class="trial-details-content">
             <div class="trial-details-section">
@@ -1162,7 +1207,7 @@ function displayTrialDetails(trial, summary) {
             </div>
             <div class="trial-details-section">
                 <h3 class="trial-details-section-title">Study Summary</h3>
-                <div class="trial-details-summary">${summary || 'Summary not available.'}</div>
+                <div class="trial-details-summary"></div>
             </div>
         </div>
     `;

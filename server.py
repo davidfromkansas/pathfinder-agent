@@ -124,7 +124,7 @@ async def search(request: Request):
 
 @app.post("/summarize-trial")
 async def summarize_trial(request: Request):
-    """Generate a non-technical summary of a clinical trial's study overview."""
+    """Generate a non-technical summary of a clinical trial's study overview - STREAMING."""
     data = await request.json()
     study_overview = data.get("study_overview", "")
     nct_id = data.get("nct_id", "")
@@ -145,27 +145,34 @@ Study Overview:
 
 Provide only the summary, no additional commentary."""
     
-    try:
-        # Use the agent to generate the summary
-        summary_text = ""
-        async for event_type, event_data in get_agent_response_stream(prompt, session_id=None, mode="auto"):
-            if event_type == 'text':
-                summary_text += event_data
-        
-        # Clean up the summary (remove any markdown formatting if needed)
-        summary = summary_text.strip()
-        
-        # Ensure it's under 250 words
-        words = summary.split()
-        if len(words) > 250:
-            summary = ' '.join(words[:250]) + '...'
-        
-        return {"summary": summary}
-    except Exception as e:
-        print(f"[Server] Error generating summary: {str(e)}", flush=True)
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e)}
+    async def generate():
+        try:
+            word_count = 0
+            async for event_type, event_data in get_agent_response_stream(prompt, session_id=None, mode="auto"):
+                if event_type == 'text':
+                    # Stream text chunks to frontend
+                    yield f"data: {json.dumps({'type': 'text', 'content': event_data})}\n\n"
+                    # Track word count to enforce 250 word limit
+                    word_count += len(event_data.split())
+                    if word_count >= 250:
+                        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                        return
+            
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except Exception as e:
+            print(f"[Server] Error generating summary: {str(e)}", flush=True)
+            import traceback
+            traceback.print_exc()
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 
 if __name__ == "__main__":
