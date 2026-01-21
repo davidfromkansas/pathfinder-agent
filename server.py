@@ -133,12 +133,19 @@ async def summarize_trial(request: Request):
         return {"error": "No study overview provided"}
     
     # Create a prompt for the agent to summarize in non-technical terms
-    prompt = f"""Please summarize the following clinical trial study overview in simple, non-technical language that a patient without a medical or science background can understand. 
+    prompt = f"""Please summarize the following clinical trial study overview in simple, non-technical language that a patient without a medical or science background can understand.
 
-Keep the summary to a maximum of 250 words. Focus on:
-- What the study is trying to find out
-- What participants will do
-- Why this research matters
+Keep the summary to a maximum of 250 words. Focus ONLY on:
+- What this clinical trial is about (the condition being treated)
+- What drugs or treatments are being tested
+- Why these drugs/treatments are relevant to the disease (how they work, why they might help)
+
+IMPORTANT:
+- Do NOT include details about what participants will do (procedures, visits, etc.)
+- Do NOT include specific study endpoints or outcomes being measured
+- Do explain any medical terms or concepts that might be unfamiliar
+- Write as if explaining to a friend who has no medical background
+- Keep it concise and focused on helping the patient understand the treatment approach
 
 Study Overview:
 {study_overview}
