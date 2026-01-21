@@ -1372,15 +1372,38 @@ function setupEmailContactButton(trialDetails, trialTitle) {
         subject = subject.substring(0, 77) + '...';
     }
     
-    // Create email body
-    const userQuery = lastUserQuery || userCondition || 'my condition';
+    // Create email body - make it natural and first-person
+    const userQuery = lastUserQuery || userCondition || '';
+    
+    // Convert user query to natural first-person language
+    let conditionContext = '';
+    if (userQuery) {
+        // Remove common search phrases and make it more personal
+        let naturalQuery = userQuery
+            .replace(/find|search|looking for|trials? for|clinical trials?/gi, '')
+            .replace(/trials?/gi, '')
+            .trim();
+        
+        // If it's a simple condition, use it directly
+        if (naturalQuery.length > 0 && naturalQuery.length < 100) {
+            // Capitalize first letter
+            naturalQuery = naturalQuery.charAt(0).toUpperCase() + naturalQuery.slice(1);
+            conditionContext = `I have been diagnosed with ${naturalQuery} and am interested in learning more about this clinical trial.`;
+        } else {
+            // If query is complex or long, use a more general approach
+            conditionContext = 'I am interested in learning more about this clinical trial and whether I might be eligible to participate.';
+        }
+    } else {
+        conditionContext = 'I am interested in learning more about this clinical trial and whether I might be eligible to participate.';
+    }
+    
     const emailBody = `Dear ${contactName},
 
-I am a patient interested in learning more about this clinical trial. I have been searching for trials related to: ${userQuery}.
+${conditionContext}
 
-I would like to know more about the eligibility requirements and how to participate in this study.
+I would like to know more about the eligibility requirements and how to participate in this study. Could you please provide me with more information about the enrollment process?
 
-Thank you for your time.
+Thank you for your time and consideration.
 
 Best regards`;
 
