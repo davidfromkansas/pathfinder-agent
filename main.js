@@ -1250,6 +1250,7 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
     const trialBriefSummary = summary || descriptionModule.briefSummary || descriptionModule.detailedDescription || '';
     
     console.log('%c💡 Generating personalized recommendation...', 'color: #9C27B0; font-weight: bold;');
+    console.log('%c📋 Eligibility criteria length:', 'color: #9C27B0;', eligibility.length);
     
     const recommendationDiv = sheetBody.querySelector('.trial-details-recommendation');
     if (recommendationDiv) {
@@ -1268,7 +1269,7 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
                 trial_conditions: trialConditions,
                 trial_interventions: trialInterventions,
                 trial_summary: trialBriefSummary.substring(0, 1000), // Use brief summary from API
-                eligibility_criteria: eligibility.substring(0, 500) // Limit length
+                eligibility_criteria: eligibility // Pass full eligibility criteria
             })
         });
         
