@@ -1332,6 +1332,65 @@ function switchTrialDetailsTab(tabName) {
     }
 }
 
+function setupEmailContactButton(trialDetails, trialTitle) {
+    const emailButton = document.getElementById('trialDetailsEmailButton');
+    if (!emailButton) return;
+    
+    // Extract contact information from API response
+    const protocol = trialDetails?.protocolSection || {};
+    const contactsModule = protocol.contactsLocationsModule || {};
+    const centralContacts = contactsModule.centralContacts || [];
+    
+    // Find the main study contact (usually the first one, or one marked as primary)
+    let studyContact = null;
+    if (Array.isArray(centralContacts) && centralContacts.length > 0) {
+        // Look for a primary contact first
+        studyContact = centralContacts.find(contact => contact.role === 'PRIMARY') || centralContacts[0];
+    }
+    
+    if (!studyContact || !studyContact.email) {
+        // No contact email available - hide or disable button
+        emailButton.style.display = 'none';
+        return;
+    }
+    
+    const contactEmail = studyContact.email;
+    const contactName = studyContact.name || 'Study Contact';
+    const nctId = protocol.identificationModule?.nctId || '';
+    
+    // Create subject line: "Candidate interested in joining trial [NCT ID] and [trial name]"
+    // Keep it concise (under 30 chars seems too short, I'll aim for ~50-60 chars and truncate if needed)
+    let subject = `Candidate interested in joining trial ${nctId}`;
+    if (trialTitle) {
+        // Truncate trial title if needed to keep subject reasonable
+        const titlePart = trialTitle.length > 30 ? trialTitle.substring(0, 27) + '...' : trialTitle;
+        subject += ` - ${titlePart}`;
+    }
+    
+    // Limit subject to ~80 characters (email clients typically handle this well)
+    if (subject.length > 80) {
+        subject = subject.substring(0, 77) + '...';
+    }
+    
+    // Create email body
+    const userQuery = lastUserQuery || userCondition || 'my condition';
+    const emailBody = `Dear ${contactName},
+
+I am a patient interested in learning more about this clinical trial. I have been searching for trials related to: ${userQuery}.
+
+I would like to know more about the eligibility requirements and how to participate in this study.
+
+Thank you for your time.
+
+Best regards`;
+
+    // Create mailto link
+    const mailtoLink = `mailto:${encodeURIComponent(contactEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    emailButton.href = mailtoLink;
+    emailButton.style.display = 'inline-flex';
+}
+
 async function generatePersonalizedRecommendation(trialDetails, summary, sheetBody) {
     // Get user's condition/query
     const userQuery = lastUserQuery || userCondition || 'the condition you searched for';
