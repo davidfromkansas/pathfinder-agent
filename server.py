@@ -158,17 +158,12 @@ Provide only the summary in paragraph form, no additional commentary."""
     
     async def generate():
         try:
-            word_count = 0
             async for event_type, event_data in get_agent_response_stream(prompt, session_id=None, mode="auto"):
                 if event_type == 'text':
                     # Stream text chunks to frontend
                     yield f"data: {json.dumps({'type': 'text', 'content': event_data})}\n\n"
-                    # Track word count to enforce 250 word limit
-                    word_count += len(event_data.split())
-                    if word_count >= 250:
-                        yield f"data: {json.dumps({'type': 'done'})}\n\n"
-                        return
             
+            # Stream ended naturally - LLM will respect the 250 word limit from the prompt
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         except Exception as e:
             print(f"[Server] Error generating summary: {str(e)}", flush=True)
