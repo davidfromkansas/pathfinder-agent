@@ -1713,4 +1713,10 @@ footer {
     .trial-title {
         font-size: 0.9rem;
     }
+    
+    .trial-details-highlights {
+        grid-template-columns: 1fr;
+        gap: 0.875rem;
+        padding: 1rem;
+    }
 }
