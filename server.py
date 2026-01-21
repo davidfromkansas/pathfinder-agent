@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, FileResponse
@@ -228,15 +229,36 @@ Write in paragraph form (NO bullet points). Be concise and helpful."""
 
     async def generate():
         try:
+            accumulated_text = ""
             word_count = 0
+            max_words = 250
+            
             async for event_type, event_data in get_agent_response_stream(prompt, session_id=None, mode="auto"):
                 if event_type == 'text':
+                    accumulated_text += event_data
+                    word_count = len(accumulated_text.split())
+                    
+                    # Always yield the text as it comes
                     yield f"data: {json.dumps({'type': 'text', 'content': event_data})}\n\n"
-                    word_count += len(event_data.split())
-                    if word_count >= 250:
-                        yield f"data: {json.dumps({'type': 'done'})}\n\n"
-                        return
+                    
+                    # If we're approaching or past the limit, check for sentence completion
+                    if word_count >= max_words - 10:  # Start checking when close to limit
+                        # Look for the last complete sentence (ending with . ! or ?)
+                        # Match sentence endings followed by space or end of string
+                        sentence_pattern = r'[.!?](?:\s+|$)'
+                        matches = list(re.finditer(sentence_pattern, accumulated_text))
+                        
+                        if matches:
+                            last_sentence_end = matches[-1].end()
+                            text_up_to_last_sentence = accumulated_text[:last_sentence_end]
+                            words_in_complete_sentences = len(text_up_to_last_sentence.split())
+                            
+                            # If we have complete sentences and we're at/over the limit, stop
+                            if words_in_complete_sentences >= max_words:
+                                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                                return
             
+            # Stream ended naturally
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         except Exception as e:
             print(f"[Server] Error generating recommendation: {str(e)}", flush=True)
