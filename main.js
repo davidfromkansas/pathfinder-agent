@@ -1350,17 +1350,53 @@ function getConversationSummary() {
     // Combine all user messages to understand their condition
     const fullConversation = userMessages.join(' ');
     
-    // Remove common search phrases
+    // Remove common search phrases and location preferences
     let cleaned = fullConversation
         .replace(/find|search|looking for|trials? for|clinical trials?/gi, '')
         .replace(/trials?/gi, '')
+        .replace(/i only want|i want|only|usa|united states|us|america/gi, '')
+        .replace(/\s+/g, ' ')
         .trim();
     
-    // If we have meaningful content (more than just a few words), return it
-    if (cleaned.length > 10 && cleaned.split(/\s+/).length >= 3) {
-        return cleaned;
+    // Extract key medical information - look for condition-related phrases
+    const conditionPatterns = [
+        /(?:i have|i've been diagnosed with|diagnosed with|i have a history of|history of|i suffer from|suffer from|i have|my|i'm dealing with|dealing with)\s+([^.!?]+?)(?:\.|$|and|,)/gi
+    ];
+    
+    let conditions = [];
+    for (const pattern of conditionPatterns) {
+        let match;
+        while ((match = pattern.exec(cleaned)) !== null) {
+            const condition = match[1]?.trim();
+            if (condition && condition.length > 3 && condition.length < 100) {
+                // Clean up the condition
+                let cleanCondition = condition
+                    .replace(/^(a|an|the)\s+/i, '')
+                    .replace(/\s+(and|or|,)\s+.*$/i, '') // Remove "and X" parts
+                    .trim();
+                
+                if (cleanCondition.length > 3) {
+                    conditions.push(cleanCondition);
+                }
+            }
+        }
     }
     
+    // If we found specific conditions, use them
+    if (conditions.length > 0) {
+        // Remove duplicates and join naturally
+        const uniqueConditions = [...new Set(conditions)];
+        return uniqueConditions.join(' and ');
+    }
+    
+    // Fallback: try to extract meaningful phrases (3-5 words that might be a condition)
+    const words = cleaned.split(/\s+/).filter(w => w.length > 2);
+    if (words.length >= 3 && words.length <= 8) {
+        // Likely a single condition description
+        return words.join(' ');
+    }
+    
+    // If we have meaningful content but couldn't extract cleanly, return null to use fallback
     return null;
 }
 
@@ -1427,23 +1463,31 @@ function setupEmailContactButton(trialDetails, trialTitle) {
     // First, try to get a summary from the conversation
     const conversationSummary = getConversationSummary();
     
-    if (conversationSummary && conversationSummary.length > 20) {
-        // We have enough context from the conversation
-        // Clean it up and format it naturally
-        let naturalSummary = conversationSummary
+    if (conversationSummary && conversationSummary.length > 5) {
+        // We have a clean condition from the conversation
+        // Format it naturally
+        let naturalCondition = conversationSummary
             .replace(/\s+/g, ' ') // Normalize whitespace
             .trim();
         
         // Capitalize first letter
-        naturalSummary = naturalSummary.charAt(0).toUpperCase() + naturalSummary.slice(1);
+        naturalCondition = naturalCondition.charAt(0).toUpperCase() + naturalCondition.slice(1);
         
-        // Limit to reasonable length (about 100 words max for context)
-        const words = naturalSummary.split(/\s+/);
-        if (words.length > 100) {
-            naturalSummary = words.slice(0, 100).join(' ') + '...';
+        // Make sure it doesn't start with "I have" or similar (we'll add that)
+        naturalCondition = naturalCondition.replace(/^(i have|i've|my|i'm)\s+/i, '');
+        
+        // Limit to reasonable length (about 50 words max for condition description)
+        const words = naturalCondition.split(/\s+/);
+        if (words.length > 50) {
+            naturalCondition = words.slice(0, 50).join(' ') + '...';
         }
         
-        conditionContext = `I have been diagnosed with ${naturalSummary} and am interested in learning more about this clinical trial.`;
+        // Format naturally based on what we found
+        if (naturalCondition.toLowerCase().includes('diagnosed') || naturalCondition.toLowerCase().includes('history')) {
+            conditionContext = `I ${naturalCondition} and am interested in learning more about this clinical trial.`;
+        } else {
+            conditionContext = `I have been diagnosed with ${naturalCondition} and am interested in learning more about this clinical trial.`;
+        }
     } else {
         // Fallback: Use trial summary if available
         const trialSummary = getTrialSummary();
