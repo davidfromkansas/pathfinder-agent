@@ -1337,67 +1337,41 @@ function switchTrialDetailsTab(tabName) {
     }
 }
 
-function getConversationSummary() {
+async function getEmailContextFromLLM() {
     // Extract all user messages from the conversation
     const userMessages = Array.from(messagesContainer.querySelectorAll('.message.user'))
         .map(msg => msg.textContent.trim())
         .filter(msg => msg.length > 0);
     
-    if (userMessages.length === 0) {
-        return null;
-    }
+    // Get trial summary as fallback
+    const trialSummary = getTrialSummary();
     
-    // Combine all user messages to understand their condition
-    const fullConversation = userMessages.join(' ');
-    
-    // Remove common search phrases and location preferences
-    let cleaned = fullConversation
-        .replace(/find|search|looking for|trials? for|clinical trials?/gi, '')
-        .replace(/trials?/gi, '')
-        .replace(/i only want|i want|only|usa|united states|us|america/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    
-    // Extract key medical information - look for condition-related phrases
-    const conditionPatterns = [
-        /(?:i have|i've been diagnosed with|diagnosed with|i have a history of|history of|i suffer from|suffer from|i have|my|i'm dealing with|dealing with)\s+([^.!?]+?)(?:\.|$|and|,)/gi
-    ];
-    
-    let conditions = [];
-    for (const pattern of conditionPatterns) {
-        let match;
-        while ((match = pattern.exec(cleaned)) !== null) {
-            const condition = match[1]?.trim();
-            if (condition && condition.length > 3 && condition.length < 100) {
-                // Clean up the condition
-                let cleanCondition = condition
-                    .replace(/^(a|an|the)\s+/i, '')
-                    .replace(/\s+(and|or|,)\s+.*$/i, '') // Remove "and X" parts
-                    .trim();
-                
-                if (cleanCondition.length > 3) {
-                    conditions.push(cleanCondition);
-                }
-            }
+    try {
+        const response = await fetch('/generate-email-context', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_messages: userMessages,
+                trial_summary: trialSummary || ''
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
+        
+        const data = await response.json();
+        return data.context || null;
+    } catch (error) {
+        console.error('Error generating email context:', error);
+        // Fallback
+        if (trialSummary) {
+            return `I have read about this clinical trial and am interested in learning more. ${trialSummary}`;
+        }
+        return 'I am interested in learning more about this clinical trial and whether I might be eligible to participate.';
     }
-    
-    // If we found specific conditions, use them
-    if (conditions.length > 0) {
-        // Remove duplicates and join naturally
-        const uniqueConditions = [...new Set(conditions)];
-        return uniqueConditions.join(' and ');
-    }
-    
-    // Fallback: try to extract meaningful phrases (3-5 words that might be a condition)
-    const words = cleaned.split(/\s+/).filter(w => w.length > 2);
-    if (words.length >= 3 && words.length <= 8) {
-        // Likely a single condition description
-        return words.join(' ');
-    }
-    
-    // If we have meaningful content but couldn't extract cleanly, return null to use fallback
-    return null;
 }
 
 function getTrialSummary() {
@@ -1417,7 +1391,7 @@ function getTrialSummary() {
     return null;
 }
 
-function setupEmailContactButton(trialDetails, trialTitle) {
+async function setupEmailContactButton(trialDetails, trialTitle) {
     const emailButton = document.getElementById('trialDetailsEmailButton');
     if (!emailButton) return;
     
@@ -1457,47 +1431,12 @@ function setupEmailContactButton(trialDetails, trialTitle) {
         subject = subject.substring(0, 77) + '...';
     }
     
-    // Create email body - summarize user's condition from conversation or use trial summary
-    let conditionContext = '';
+    // Create email body - use LLM to generate natural context from conversation
+    let conditionContext = await getEmailContextFromLLM();
     
-    // First, try to get a summary from the conversation
-    const conversationSummary = getConversationSummary();
-    
-    if (conversationSummary && conversationSummary.length > 5) {
-        // We have a clean condition from the conversation
-        // Format it naturally
-        let naturalCondition = conversationSummary
-            .replace(/\s+/g, ' ') // Normalize whitespace
-            .trim();
-        
-        // Capitalize first letter
-        naturalCondition = naturalCondition.charAt(0).toUpperCase() + naturalCondition.slice(1);
-        
-        // Make sure it doesn't start with "I have" or similar (we'll add that)
-        naturalCondition = naturalCondition.replace(/^(i have|i've|my|i'm)\s+/i, '');
-        
-        // Limit to reasonable length (about 50 words max for condition description)
-        const words = naturalCondition.split(/\s+/);
-        if (words.length > 50) {
-            naturalCondition = words.slice(0, 50).join(' ') + '...';
-        }
-        
-        // Format naturally based on what we found
-        if (naturalCondition.toLowerCase().includes('diagnosed') || naturalCondition.toLowerCase().includes('history')) {
-            conditionContext = `I ${naturalCondition} and am interested in learning more about this clinical trial.`;
-        } else {
-            conditionContext = `I have been diagnosed with ${naturalCondition} and am interested in learning more about this clinical trial.`;
-        }
-    } else {
-        // Fallback: Use trial summary if available
-        const trialSummary = getTrialSummary();
-        
-        if (trialSummary) {
-            conditionContext = `I have read about this clinical trial and am interested in learning more. ${trialSummary}`;
-        } else {
-            // Final fallback
-            conditionContext = 'I am interested in learning more about this clinical trial and whether I might be eligible to participate.';
-        }
+    // Add the trial interest statement if not already included
+    if (!conditionContext.includes('clinical trial') && !conditionContext.includes('this study')) {
+        conditionContext += ' I am interested in learning more about this clinical trial.';
     }
     
     const emailBody = `Dear ${contactName},

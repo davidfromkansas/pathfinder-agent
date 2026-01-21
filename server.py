@@ -250,6 +250,66 @@ Write in paragraph form (NO bullet points). Be concise and direct - focus on the
     )
 
 
+@app.post("/generate-email-context")
+async def generate_email_context(request: Request):
+    """Generate a natural, first-person summary of the user's condition from conversation messages."""
+    data = await request.json()
+    user_messages = data.get("user_messages", [])
+    trial_summary = data.get("trial_summary", "")
+    
+    if not user_messages or len(user_messages) == 0:
+        # Fallback to trial summary if no conversation
+        if trial_summary:
+            return {"context": f"I have read about this clinical trial and am interested in learning more. {trial_summary}"}
+        return {"context": "I am interested in learning more about this clinical trial and whether I might be eligible to participate."}
+    
+    # Combine user messages
+    conversation_text = " ".join(user_messages)
+    
+    # Create prompt for LLM to generate natural email context
+    prompt = f"""Based on the following conversation messages from a patient searching for clinical trials, create a natural, first-person sentence that summarizes their medical condition for an email to a study contact.
+
+The sentence should:
+- Be written in first person (I, my, etc.)
+- Sound natural and professional
+- Focus ONLY on the medical condition/health issue
+- Remove any search terms, location preferences, or trial-related language
+- Be concise (1-2 sentences maximum)
+- Start with something like "I have been diagnosed with..." or "I have..." or "I am dealing with..."
+
+Conversation messages:
+{conversation_text}
+
+Generate ONLY the sentence(s) describing the condition - no additional commentary or explanation."""
+
+    try:
+        context_text = ""
+        async for event_type, event_data in get_agent_response_stream(prompt, session_id=None, mode="auto"):
+            if event_type == 'text':
+                context_text += event_data
+        
+        # Clean up the response
+        context_text = context_text.strip()
+        
+        # If we got a response, use it; otherwise fallback
+        if context_text and len(context_text) > 10:
+            return {"context": context_text}
+        else:
+            # Fallback
+            if trial_summary:
+                return {"context": f"I have read about this clinical trial and am interested in learning more. {trial_summary}"}
+            return {"context": "I am interested in learning more about this clinical trial and whether I might be eligible to participate."}
+            
+    except Exception as e:
+        print(f"[Server] Error generating email context: {str(e)}", flush=True)
+        import traceback
+        traceback.print_exc()
+        # Fallback on error
+        if trial_summary:
+            return {"context": f"I have read about this clinical trial and am interested in learning more. {trial_summary}"}
+        return {"context": "I am interested in learning more about this clinical trial and whether I might be eligible to participate."}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=3000)
