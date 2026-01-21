@@ -1071,12 +1071,17 @@ async function openTrialDetailsSheet(trial) {
         // Display title first with highlight info
         displayTrialDetailsHeader({ ...trial, title: officialTitle }, trialDetails);
         
-        // Set up email contact button
-        setupEmailContactButton(trialDetails, officialTitle);
-        
         // Generate both summary and recommendation in parallel
         const summaryPromise = generateTrialSummary(trialDetails, sheetBody);
         const recommendationPromise = generatePersonalizedRecommendation(trialDetails, null, sheetBody);
+        
+        // Wait for summary to be available, then set up email button (so we can use trial summary as fallback)
+        summaryPromise.then(() => {
+            setupEmailContactButton(trialDetails, officialTitle);
+        }).catch(() => {
+            // Even if summary fails, set up button with conversation context only
+            setupEmailContactButton(trialDetails, officialTitle);
+        });
         
         // Wait for both to complete
         const [summary] = await Promise.all([summaryPromise, recommendationPromise]);
