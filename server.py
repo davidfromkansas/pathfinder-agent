@@ -152,7 +152,15 @@ Provide only the summary, no additional commentary."""
             if event_type == 'text':
                 summary_text += event_data
         
-        return {"summary": summary_text.strip()}
+        # Clean up the summary (remove any markdown formatting if needed)
+        summary = summary_text.strip()
+        
+        # Ensure it's under 250 words
+        words = summary.split()
+        if len(words) > 250:
+            summary = ' '.join(words[:250]) + '...'
+        
+        return {"summary": summary}
     except Exception as e:
         print(f"[Server] Error generating summary: {str(e)}", flush=True)
         import traceback
