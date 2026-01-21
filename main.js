@@ -1332,6 +1332,50 @@ function switchTrialDetailsTab(tabName) {
     }
 }
 
+function getConversationSummary() {
+    // Extract all user messages from the conversation
+    const userMessages = Array.from(messagesContainer.querySelectorAll('.message.user'))
+        .map(msg => msg.textContent.trim())
+        .filter(msg => msg.length > 0);
+    
+    if (userMessages.length === 0) {
+        return null;
+    }
+    
+    // Combine all user messages to understand their condition
+    const fullConversation = userMessages.join(' ');
+    
+    // Remove common search phrases
+    let cleaned = fullConversation
+        .replace(/find|search|looking for|trials? for|clinical trials?/gi, '')
+        .replace(/trials?/gi, '')
+        .trim();
+    
+    // If we have meaningful content (more than just a few words), return it
+    if (cleaned.length > 10 && cleaned.split(/\s+/).length >= 3) {
+        return cleaned;
+    }
+    
+    return null;
+}
+
+function getTrialSummary() {
+    // Try to get the trial summary from the summary tab
+    const summaryTab = document.getElementById('trialDetailsSummaryTab');
+    if (summaryTab) {
+        const summaryDiv = summaryTab.querySelector('.trial-details-summary');
+        if (summaryDiv) {
+            const summaryText = summaryDiv.textContent || summaryDiv.innerText || '';
+            if (summaryText.trim().length > 0) {
+                // Get first ~30 words
+                const words = summaryText.trim().split(/\s+/).slice(0, 30).join(' ');
+                return words;
+            }
+        }
+    }
+    return null;
+}
+
 function setupEmailContactButton(trialDetails, trialTitle) {
     const emailButton = document.getElementById('trialDetailsEmailButton');
     if (!emailButton) return;
@@ -1372,29 +1416,39 @@ function setupEmailContactButton(trialDetails, trialTitle) {
         subject = subject.substring(0, 77) + '...';
     }
     
-    // Create email body - make it natural and first-person
-    const userQuery = lastUserQuery || userCondition || '';
-    
-    // Convert user query to natural first-person language
+    // Create email body - summarize user's condition from conversation or use trial summary
     let conditionContext = '';
-    if (userQuery) {
-        // Remove common search phrases and make it more personal
-        let naturalQuery = userQuery
-            .replace(/find|search|looking for|trials? for|clinical trials?/gi, '')
-            .replace(/trials?/gi, '')
+    
+    // First, try to get a summary from the conversation
+    const conversationSummary = getConversationSummary();
+    
+    if (conversationSummary && conversationSummary.length > 20) {
+        // We have enough context from the conversation
+        // Clean it up and format it naturally
+        let naturalSummary = conversationSummary
+            .replace(/\s+/g, ' ') // Normalize whitespace
             .trim();
         
-        // If it's a simple condition, use it directly
-        if (naturalQuery.length > 0 && naturalQuery.length < 100) {
-            // Capitalize first letter
-            naturalQuery = naturalQuery.charAt(0).toUpperCase() + naturalQuery.slice(1);
-            conditionContext = `I have been diagnosed with ${naturalQuery} and am interested in learning more about this clinical trial.`;
+        // Capitalize first letter
+        naturalSummary = naturalSummary.charAt(0).toUpperCase() + naturalSummary.slice(1);
+        
+        // Limit to reasonable length (about 100 words max for context)
+        const words = naturalSummary.split(/\s+/);
+        if (words.length > 100) {
+            naturalSummary = words.slice(0, 100).join(' ') + '...';
+        }
+        
+        conditionContext = `I have been diagnosed with ${naturalSummary} and am interested in learning more about this clinical trial.`;
+    } else {
+        // Fallback: Use trial summary if available
+        const trialSummary = getTrialSummary();
+        
+        if (trialSummary) {
+            conditionContext = `I have read about this clinical trial and am interested in learning more. ${trialSummary}`;
         } else {
-            // If query is complex or long, use a more general approach
+            // Final fallback
             conditionContext = 'I am interested in learning more about this clinical trial and whether I might be eligible to participate.';
         }
-    } else {
-        conditionContext = 'I am interested in learning more about this clinical trial and whether I might be eligible to participate.';
     }
     
     const emailBody = `Dear ${contactName},
@@ -1406,7 +1460,7 @@ I would like to know more about the eligibility requirements and how to particip
 Thank you for your time and consideration.
 
 Best regards`;
-
+    
     // Create mailto link
     const mailtoLink = `mailto:${encodeURIComponent(contactEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
     
