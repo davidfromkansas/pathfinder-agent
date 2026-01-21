@@ -201,6 +201,7 @@ async def personalized_recommendation(request: Request):
         return {"error": "No user query provided"}
     
     # Create a prompt for personalized recommendation
+    # Note: trial_summary may be brief (from API) since this runs in parallel with the full summary generation
     prompt = f"""Based on the user's search query and this clinical trial, provide a personalized recommendation on whether this trial might be relevant to them.
 
 User's search: "{user_query}"
@@ -209,7 +210,7 @@ Trial Information:
 - Title: {trial_title}
 - Conditions: {trial_conditions}
 - Treatments: {trial_interventions}
-- Summary: {trial_summary}
+- Study Overview: {trial_summary}
 
 Write a recommendation (maximum 250 words) in paragraph form that:
 - Assesses whether this trial matches what the user is looking for

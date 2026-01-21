@@ -1068,20 +1068,21 @@ async function openTrialDetailsSheet(trial) {
                              trialDetails.protocolSection?.identificationModule?.officialTitle || 
                              trial.title;
         
-        // Display title first, then stream summary
+        // Display title first
         displayTrialDetailsHeader({ ...trial, title: officialTitle });
         
-        // Generate AI summary (streaming)
-        const summary = await generateTrialSummary(trialDetails, sheetBody);
+        // Generate both summary and recommendation in parallel
+        const summaryPromise = generateTrialSummary(trialDetails, sheetBody);
+        const recommendationPromise = generatePersonalizedRecommendation(trialDetails, null, sheetBody);
+        
+        // Wait for both to complete
+        const [summary] = await Promise.all([summaryPromise, recommendationPromise]);
         
         // Final update to summary (in case there's any remaining text)
         const summaryDiv = sheetBody.querySelector('.trial-details-summary');
         if (summaryDiv) {
             summaryDiv.textContent = summary;
         }
-        
-        // Generate personalized recommendation (streaming)
-        await generatePersonalizedRecommendation(trialDetails, summary, sheetBody);
     } catch (error) {
         console.error('%c❌ Error loading trial details:', 'color: #F44336; font-weight: bold;', error);
         console.error('Error details:', error.message, error.stack);
@@ -1240,10 +1241,13 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
     const conditionsModule = protocol.conditionsModule || {};
     const interventionsModule = protocol.armsInterventionsModule || {};
     const eligibilityModule = protocol.eligibilityModule || {};
+    const descriptionModule = protocol.descriptionModule || {};
     
     const trialConditions = (conditionsModule.conditions || []).join(', ');
     const trialInterventions = (interventionsModule.interventions || []).map(i => i.name).join(', ');
     const eligibility = eligibilityModule.eligibilityCriteria || '';
+    // Use brief summary from API if summary not provided yet
+    const trialBriefSummary = summary || descriptionModule.briefSummary || descriptionModule.detailedDescription || '';
     
     console.log('%c💡 Generating personalized recommendation...', 'color: #9C27B0; font-weight: bold;');
     
@@ -1263,7 +1267,7 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
                 trial_title: idModule.briefTitle || '',
                 trial_conditions: trialConditions,
                 trial_interventions: trialInterventions,
-                trial_summary: summary,
+                trial_summary: trialBriefSummary.substring(0, 1000), // Use brief summary from API
                 eligibility_criteria: eligibility.substring(0, 500) // Limit length
             })
         });
