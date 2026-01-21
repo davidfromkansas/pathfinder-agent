@@ -199,7 +199,7 @@ async def personalized_recommendation(request: Request):
     # Note: trial_summary may be brief (from API) since this runs in parallel with the full summary generation
     eligibility_section = f"\n\nEligibility Criteria:\n{eligibility_criteria}" if eligibility_criteria else ""
     
-    prompt = f"""Based on the user's search query and this clinical trial, provide a personalized recommendation on whether this trial might be relevant to them.
+    prompt = f"""Based on the user's search query and this clinical trial, provide a concise, direct recommendation.
 
 User's search: "{user_query}"
 
@@ -209,17 +209,22 @@ Trial Information:
 - Treatments: {trial_interventions}
 - Study Overview: {trial_summary}{eligibility_section}
 
-IMPORTANT: Carefully review the Eligibility Criteria section above. Use it to assess whether the user might qualify for this trial. Mention specific eligibility requirements (age, disease stage, prior treatments, etc.) that are relevant to the user's search query.
-
-Write a recommendation (maximum 250 words) in paragraph form that:
-- Assesses whether this trial matches what the user is looking for
-- Explains why it might or might not be a good fit
-- References specific eligibility criteria that are relevant to the user's condition/search
-- Highlights any potential eligibility barriers or requirements the user should be aware of
-- Uses simple, non-technical language
+IMPORTANT: 
+- Do NOT restate the user's search query or condition - jump straight to the recommendation
+- Focus on whether this trial is a good fit and why
+- Reference specific eligibility criteria that are relevant (age, disease stage, prior treatments, etc.)
+- Highlight any potential eligibility barriers or requirements
+- Be direct and concise - get to the point quickly
+- Use simple, non-technical language
 - Be honest if the trial doesn't seem relevant - don't force a match
 
-Write in paragraph form (NO bullet points). Be concise and helpful."""
+Write a recommendation (maximum 250 words) in paragraph form that:
+- Directly states whether this trial is relevant (don't repeat the user's condition)
+- Explains why it might or might not be a good fit
+- Mentions specific eligibility requirements or barriers
+- Uses simple, non-technical language
+
+Write in paragraph form (NO bullet points). Be concise and direct - focus on the recommendation itself."""
 
     async def generate():
         try:
