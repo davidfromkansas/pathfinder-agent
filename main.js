@@ -1064,10 +1064,12 @@ async function openTrialDetailsSheet(trial) {
         // Display content with official title
         displayTrialDetails({ ...trial, title: officialTitle }, summary);
     } catch (error) {
-        console.error('Error loading trial details:', error);
+        console.error('%c❌ Error loading trial details:', 'color: #F44336; font-weight: bold;', error);
+        console.error('Error details:', error.message, error.stack);
         sheetBody.innerHTML = `
             <div style="text-align: center; padding: 3rem;">
-                <div style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem;">Unable to load trial details</div>
+                <div style="font-size: 1rem; color: var(--text-muted); margin-bottom: 0.5rem;">Unable to load trial details</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">${error.message}</div>
                 <a href="${trialUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">
                     View on ClinicalTrials.gov →
                 </a>
@@ -1078,14 +1080,23 @@ async function openTrialDetailsSheet(trial) {
 
 async function fetchTrialDetails(nctId) {
     // Fetch from ClinicalTrials.gov API v2
-    const apiUrl = `https://clinicaltrials.gov/api/v2/studies/${nctId}`;
+    // Remove "NCT" prefix if present
+    const cleanNctId = nctId.replace(/^NCT/i, '');
+    const apiUrl = `https://clinicaltrials.gov/api/v2/studies/${cleanNctId}`;
+    
+    console.log('%c🔍 Fetching trial details:', 'color: #9C27B0; font-weight: bold;', apiUrl);
     
     const response = await fetch(apiUrl);
+    console.log('%c📡 Response status:', 'color: #9C27B0;', response.status);
+    
     if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
     }
     
     const data = await response.json();
+    console.log('%c✅ Trial details fetched:', 'color: #4CAF50; font-weight: bold;', data);
     return data;
 }
 
@@ -1098,7 +1109,10 @@ async function generateTrialSummary(trialDetails) {
     
     const studyOverview = briefSummary || detailedDescription || 'No study overview available.';
     
+    console.log('%c📝 Study overview extracted:', 'color: #2196F3; font-weight: bold;', studyOverview.substring(0, 200) + '...');
+    
     // Send to server to generate AI summary
+    console.log('%c🤖 Generating AI summary...', 'color: #FF9800; font-weight: bold;');
     const response = await fetch('/summarize-trial', {
         method: 'POST',
         headers: {
@@ -1111,10 +1125,17 @@ async function generateTrialSummary(trialDetails) {
     });
     
     if (!response.ok) {
-        throw new Error('Failed to generate summary');
+        const errorText = await response.text();
+        console.error('Summary generation error:', errorText);
+        throw new Error(`Failed to generate summary: ${response.status}`);
     }
     
     const data = await response.json();
+    if (data.error) {
+        throw new Error(data.error);
+    }
+    
+    console.log('%c✅ Summary generated:', 'color: #4CAF50; font-weight: bold;', data.summary.substring(0, 100) + '...');
     return data.summary;
 }
 
