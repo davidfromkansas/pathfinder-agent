@@ -135,22 +135,26 @@ async def summarize_trial(request: Request):
     # Create a prompt for the agent to summarize in non-technical terms
     prompt = f"""Please summarize the following clinical trial study overview in simple, non-technical language that a patient without a medical or science background can understand.
 
+FORMAT: Write in paragraph form (NOT bullet points). Use 1-2 flowing paragraphs that read naturally.
+
 Keep the summary to a maximum of 250 words. Focus ONLY on:
 - What this clinical trial is about (the condition being treated)
 - What drugs or treatments are being tested
 - Why these drugs/treatments are relevant to the disease (how they work, why they might help)
 
 IMPORTANT:
+- Write in continuous paragraph form - NO bullet points, NO numbered lists, NO section headers
 - Do NOT include details about what participants will do (procedures, visits, etc.)
 - Do NOT include specific study endpoints or outcomes being measured
 - Do explain any medical terms or concepts that might be unfamiliar
 - Write as if explaining to a friend who has no medical background
 - Keep it concise and focused on helping the patient understand the treatment approach
+- Use smooth transitions between sentences to create a flowing narrative
 
 Study Overview:
 {study_overview}
 
-Provide only the summary, no additional commentary."""
+Provide only the summary in paragraph form, no additional commentary."""
     
     async def generate():
         try:
