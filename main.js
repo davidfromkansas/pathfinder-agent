@@ -1028,7 +1028,7 @@ function createTrialCard(trial) {
 // Trial Details Sheet
 // ========================================
 
-function openTrialDetailsSheet(trial) {
+async function openTrialDetailsSheet(trial) {
     const sheet = document.getElementById('trialDetailsSheet');
     const sheetBody = sheet.querySelector('.sheet-body');
     const linkButton = document.getElementById('trialDetailsLink');
@@ -1037,12 +1037,98 @@ function openTrialDetailsSheet(trial) {
     const trialUrl = trial.link || `https://clinicaltrials.gov/study/${trial.nct_id}`;
     linkButton.href = trialUrl;
     
-    // Clear body content for now (will be populated later)
-    sheetBody.innerHTML = '';
+    // Show loading state
+    sheetBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem;">
+            <div style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0.5rem;">Loading trial details...</div>
+            <div style="font-size: 0.9rem; color: var(--text-muted);">Fetching information and generating summary</div>
+        </div>
+    `;
     
     // Show the sheet
     sheet.classList.add('active');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    document.body.style.overflow = 'hidden';
+    
+    try {
+        // Fetch full trial details from ClinicalTrials.gov API
+        const trialDetails = await fetchTrialDetails(trial.nct_id);
+        
+        // Generate AI summary
+        const summary = await generateTrialSummary(trialDetails);
+        
+        // Display content
+        displayTrialDetails(trial, summary);
+    } catch (error) {
+        console.error('Error loading trial details:', error);
+        sheetBody.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <div style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem;">Unable to load trial details</div>
+                <a href="${trialUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">
+                    View on ClinicalTrials.gov →
+                </a>
+            </div>
+        `;
+    }
+}
+
+async function fetchTrialDetails(nctId) {
+    // Fetch from ClinicalTrials.gov API v2
+    const apiUrl = `https://clinicaltrials.gov/api/v2/studies/${nctId}`;
+    
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+}
+
+async function generateTrialSummary(trialDetails) {
+    // Extract study overview from the API response
+    const protocol = trialDetails.protocolSection || {};
+    const descriptionModule = protocol.descriptionModule || {};
+    const briefSummary = descriptionModule.briefSummary || '';
+    const detailedDescription = descriptionModule.detailedDescription || '';
+    
+    const studyOverview = briefSummary || detailedDescription || 'No study overview available.';
+    
+    // Send to server to generate AI summary
+    const response = await fetch('/summarize-trial', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            study_overview: studyOverview,
+            nct_id: trialDetails.protocolSection?.identificationModule?.nctId || ''
+        })
+    });
+    
+    if (!response.ok) {
+        throw new Error('Failed to generate summary');
+    }
+    
+    const data = await response.json();
+    return data.summary;
+}
+
+function displayTrialDetails(trial, summary) {
+    const sheetBody = document.querySelector('.sheet-body');
+    const sheetTitle = document.querySelector('.sheet-title');
+    
+    // Update title in header
+    sheetTitle.textContent = trial.title || 'Trial Details';
+    
+    // Display content
+    sheetBody.innerHTML = `
+        <div class="trial-details-content">
+            <div class="trial-details-section">
+                <h3 class="trial-details-section-title">Study Summary</h3>
+                <div class="trial-details-summary">${summary || 'Summary not available.'}</div>
+            </div>
+        </div>
+    `;
 }
 
 function closeTrialDetailsSheet() {

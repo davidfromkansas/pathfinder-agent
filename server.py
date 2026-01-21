@@ -122,6 +122,44 @@ async def search(request: Request):
     )
 
 
+@app.post("/summarize-trial")
+async def summarize_trial(request: Request):
+    """Generate a non-technical summary of a clinical trial's study overview."""
+    data = await request.json()
+    study_overview = data.get("study_overview", "")
+    nct_id = data.get("nct_id", "")
+    
+    if not study_overview:
+        return {"error": "No study overview provided"}
+    
+    # Create a prompt for the agent to summarize in non-technical terms
+    prompt = f"""Please summarize the following clinical trial study overview in simple, non-technical language that a patient without a medical or science background can understand. 
+
+Keep the summary to a maximum of 250 words. Focus on:
+- What the study is trying to find out
+- What participants will do
+- Why this research matters
+
+Study Overview:
+{study_overview}
+
+Provide only the summary, no additional commentary."""
+    
+    try:
+        # Use the agent to generate the summary
+        summary_text = ""
+        async for event_type, event_data in get_agent_response_stream(prompt, session_id=None, mode="auto"):
+            if event_type == 'text':
+                summary_text += event_data
+        
+        return {"summary": summary_text.strip()}
+    except Exception as e:
+        print(f"[Server] Error generating summary: {str(e)}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=3000)
