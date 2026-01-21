@@ -1604,78 +1604,11 @@ footer {
     font-size: 0.95rem;
     line-height: 1.7;
     color: var(--text-secondary);
+    white-space: pre-wrap;
     background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
     border-left: 3px solid var(--accent);
     padding: 1rem 1.25rem;
     border-radius: 6px;
-}
-
-.trial-details-recommendation-text p {
-    margin: 0.5rem 0;
-    line-height: 1.6;
-}
-
-.trial-details-recommendation-text p:first-child {
-    margin-top: 0;
-}
-
-.trial-details-recommendation-text p:last-child {
-    margin-bottom: 0;
-}
-
-/* Checklist styling */
-.trial-details-recommendation-text ul.checklist {
-    list-style: none;
-    padding: 0;
-    margin: 0.75rem 0;
-}
-
-.trial-details-recommendation-text ul.checklist li {
-    margin: 0.6rem 0;
-    padding: 0.5rem 0.75rem;
-    padding-left: 0.5rem;
-    line-height: 1.6;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.5);
-}
-
-.trial-details-recommendation-text ul.checklist li:first-child {
-    margin-top: 0.5rem;
-}
-
-.trial-details-recommendation-text ul.checklist li:last-child {
-    margin-bottom: 0.5rem;
-}
-
-.trial-details-recommendation-text .checklist-symbol {
-    font-weight: 600;
-    margin-right: 0.5rem;
-    display: inline-block;
-    min-width: 1.2em;
-}
-
-.trial-details-recommendation-text .checklist-match {
-    border-left: 3px solid #4CAF50;
-}
-
-.trial-details-recommendation-text .checklist-match .checklist-symbol {
-    color: #4CAF50;
-}
-
-.trial-details-recommendation-text .checklist-mismatch {
-    border-left: 3px solid #F44336;
-}
-
-.trial-details-recommendation-text .checklist-mismatch .checklist-symbol {
-    color: #F44336;
-}
-
-.trial-details-recommendation-text .checklist-neutral {
-    border-left: 3px solid #FF9800;
-}
-
-.trial-details-recommendation-text .checklist-neutral .checklist-symbol {
-    color: #FF9800;
 }
 
 @media (max-width: 640px) {

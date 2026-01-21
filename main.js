@@ -69,24 +69,9 @@ function parseMarkdown(text) {
     let inList = false;
     
     for (let line of lines) {
-        // Check if line is a checklist item with [✓], [✗], or [-]
-        const checklistMatch = line.match(/^(\s*)(\[✓\]|\[✗\]|\[-\])\s+(.+)$/);
-        if (checklistMatch) {
-            if (!inList) {
-                processedLines.push('<ul class="checklist">');
-                inList = true;
-            }
-            const symbol = checklistMatch[2];
-            const text = checklistMatch[3];
-            // Map symbols to classes for styling
-            let symbolClass = 'checklist-neutral';
-            if (symbol === '[✓]') symbolClass = 'checklist-match';
-            else if (symbol === '[✗]') symbolClass = 'checklist-mismatch';
-            processedLines.push(`<li class="${symbolClass}"><span class="checklist-symbol">${symbol}</span> ${text}</li>`);
-        }
-        // Check if line is a regular bullet point
-        else if (line.match(/^(\s*)-\s+(.+)$/)) {
-            const bulletMatch = line.match(/^(\s*)-\s+(.+)$/);
+        // Check if line is a bullet point
+        const bulletMatch = line.match(/^(\s*)-\s+(.+)$/);
+        if (bulletMatch) {
             if (!inList) {
                 processedLines.push('<ul>');
                 inList = true;
@@ -1180,7 +1165,8 @@ async function generateTrialSummary(trialDetails, sheetBody) {
     let summaryText = '';
     
     // Update loading message to show we're generating
-    const summarySection = sheetBody.querySelector('.trial-details-summary') || sheetBody;
+    const summaryContainer = document.getElementById('trialDetailsSummaryTab');
+    const summarySection = summaryContainer ? summaryContainer.querySelector('.trial-details-summary') : null;
     if (summarySection) {
         summarySection.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Generating summary...</div>';
     }
@@ -1202,8 +1188,9 @@ async function generateTrialSummary(trialDetails, sheetBody) {
                     if (parsed.type === 'text') {
                         summaryText += parsed.content;
                         // Update the summary in real-time
-                        if (summarySection) {
-                            summarySection.innerHTML = `<div class="trial-details-summary">${summaryText}</div>`;
+                        const currentSummarySection = document.getElementById('trialDetailsSummaryTab')?.querySelector('.trial-details-summary');
+                        if (currentSummarySection) {
+                            currentSummarySection.innerHTML = parseMarkdown(summaryText);
                         }
                     } else if (parsed.type === 'done') {
                         console.log('%c✅ Summary streaming complete:', 'color: #4CAF50; font-weight: bold;');
@@ -1228,22 +1215,52 @@ function displayTrialDetailsHeader(trial) {
     // Keep header title as "Trial Details"
     sheetTitle.textContent = 'Trial Details';
     
-    // Display content with title and placeholder for streaming summary and recommendation
+    // Display content with title and tabs
     sheetBody.innerHTML = `
         <div class="trial-details-content">
             <div class="trial-details-section">
                 <h2 class="trial-details-main-title">${trial.title || 'Untitled Trial'}</h2>
             </div>
-            <div class="trial-details-section">
-                <h3 class="trial-details-section-title">Study Summary</h3>
+            <div class="trial-details-tabs">
+                <button class="trial-details-tab active" data-tab="summary" onclick="switchTrialDetailsTab('summary')">
+                    Study Summary
+                </button>
+                <button class="trial-details-tab" data-tab="recommendation" onclick="switchTrialDetailsTab('recommendation')">
+                    Personalized Recommendation
+                </button>
+            </div>
+            <div class="trial-details-tab-content active" id="trialDetailsSummaryTab">
                 <div class="trial-details-summary"></div>
             </div>
-            <div class="trial-details-section">
-                <h3 class="trial-details-section-title">Personalized Recommendation</h3>
+            <div class="trial-details-tab-content" id="trialDetailsRecommendationTab">
                 <div class="trial-details-recommendation"></div>
             </div>
         </div>
     `;
+}
+
+function switchTrialDetailsTab(tabName) {
+    // Update tab buttons
+    const tabs = document.querySelectorAll('.trial-details-tab');
+    tabs.forEach(tab => {
+        if (tab.dataset.tab === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Update tab content
+    const summaryTab = document.getElementById('trialDetailsSummaryTab');
+    const recommendationTab = document.getElementById('trialDetailsRecommendationTab');
+    
+    if (tabName === 'summary') {
+        summaryTab.classList.add('active');
+        recommendationTab.classList.remove('active');
+    } else {
+        summaryTab.classList.remove('active');
+        recommendationTab.classList.add('active');
+    }
 }
 
 async function generatePersonalizedRecommendation(trialDetails, summary, sheetBody) {
@@ -1267,7 +1284,8 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
     console.log('%c💡 Generating personalized recommendation...', 'color: #9C27B0; font-weight: bold;');
     console.log('%c📋 Eligibility criteria length:', 'color: #9C27B0;', eligibility.length);
     
-    const recommendationDiv = sheetBody.querySelector('.trial-details-recommendation');
+    const recommendationContainer = document.getElementById('trialDetailsRecommendationTab');
+    const recommendationDiv = recommendationContainer ? recommendationContainer.querySelector('.trial-details-recommendation') : null;
     if (recommendationDiv) {
         recommendationDiv.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Analyzing relevance...</div>';
     }
@@ -1309,15 +1327,16 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     const data = line.slice(6);
-                    try {
-                        const parsed = JSON.parse(data);
-                        
-                        if (parsed.type === 'text') {
-                            recommendationText += parsed.content;
-                            // Update the recommendation in real-time with markdown parsing
-                            if (recommendationDiv) {
-                                recommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${parseMarkdown(recommendationText)}</div>`;
-                            }
+                            try {
+                                const parsed = JSON.parse(data);
+                                
+                                if (parsed.type === 'text') {
+                                    recommendationText += parsed.content;
+                                    // Update the recommendation in real-time
+                                    const currentRecommendationDiv = document.getElementById('trialDetailsRecommendationTab')?.querySelector('.trial-details-recommendation');
+                                    if (currentRecommendationDiv) {
+                                        currentRecommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${parseMarkdown(recommendationText)}</div>`;
+                                    }
                         } else if (parsed.type === 'done') {
                             console.log('%c✅ Recommendation streaming complete:', 'color: #4CAF50; font-weight: bold;');
                             return recommendationText.trim();
@@ -1332,15 +1351,17 @@ async function generatePersonalizedRecommendation(trialDetails, summary, sheetBo
         }
         
         // Final update
-        if (recommendationDiv) {
-            recommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${recommendationText.trim()}</div>`;
+        const finalRecommendationDiv = document.getElementById('trialDetailsRecommendationTab')?.querySelector('.trial-details-recommendation');
+        if (finalRecommendationDiv) {
+            finalRecommendationDiv.innerHTML = `<div class="trial-details-recommendation-text">${parseMarkdown(recommendationText.trim())}</div>`;
         }
         
         return recommendationText.trim();
     } catch (error) {
         console.error('Error generating recommendation:', error);
-        if (recommendationDiv) {
-            recommendationDiv.innerHTML = '<div style="color: var(--text-muted);">Unable to generate personalized recommendation at this time.</div>';
+        const errorRecommendationDiv = document.getElementById('trialDetailsRecommendationTab')?.querySelector('.trial-details-recommendation');
+        if (errorRecommendationDiv) {
+            errorRecommendationDiv.innerHTML = '<div style="color: var(--text-muted);">Unable to generate personalized recommendation at this time.</div>';
         }
     }
 }
