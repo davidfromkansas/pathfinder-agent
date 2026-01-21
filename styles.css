@@ -1576,6 +1576,14 @@ footer {
     gap: 1rem;
 }
 
+.trial-details-main-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+    line-height: 1.4;
+}
+
 .trial-details-section-title {
     font-size: 1.1rem;
     font-weight: 600;

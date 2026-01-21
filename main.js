@@ -1117,12 +1117,15 @@ function displayTrialDetails(trial, summary) {
     const sheetBody = document.querySelector('.sheet-body');
     const sheetTitle = document.querySelector('.sheet-title');
     
-    // Update title in header
-    sheetTitle.textContent = trial.title || 'Trial Details';
+    // Keep header title as "Trial Details"
+    sheetTitle.textContent = 'Trial Details';
     
-    // Display content
+    // Display content with title and summary
     sheetBody.innerHTML = `
         <div class="trial-details-content">
+            <div class="trial-details-section">
+                <h2 class="trial-details-main-title">${trial.title || 'Untitled Trial'}</h2>
+            </div>
             <div class="trial-details-section">
                 <h3 class="trial-details-section-title">Study Summary</h3>
                 <div class="trial-details-summary">${summary || 'Summary not available.'}</div>
