@@ -1076,11 +1076,11 @@ async function openTrialDetailsSheet(trial) {
         const recommendationPromise = generatePersonalizedRecommendation(trialDetails, null, sheetBody);
         
         // Wait for summary to be available, then set up email button (so we can use trial summary as fallback)
-        summaryPromise.then(() => {
-            setupEmailContactButton(trialDetails, officialTitle);
-        }).catch(() => {
+        summaryPromise.then(async () => {
+            await setupEmailContactButton(trialDetails, officialTitle);
+        }).catch(async () => {
             // Even if summary fails, set up button with conversation context only
-            setupEmailContactButton(trialDetails, officialTitle);
+            await setupEmailContactButton(trialDetails, officialTitle);
         });
         
         // Wait for both to complete
