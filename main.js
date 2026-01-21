@@ -1071,6 +1071,9 @@ async function openTrialDetailsSheet(trial) {
         // Display title first with highlight info
         displayTrialDetailsHeader({ ...trial, title: officialTitle }, trialDetails);
         
+        // Set up email contact button
+        setupEmailContactButton(trialDetails, officialTitle);
+        
         // Generate both summary and recommendation in parallel
         const summaryPromise = generateTrialSummary(trialDetails, sheetBody);
         const recommendationPromise = generatePersonalizedRecommendation(trialDetails, null, sheetBody);

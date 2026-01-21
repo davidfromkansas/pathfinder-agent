@@ -1542,6 +1542,12 @@ footer {
     flex-shrink: 0;
 }
 
+.sheet-footer-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-direction: column;
+}
+
 .sheet-button-primary {
     display: inline-flex;
     align-items: center;
@@ -1561,6 +1567,29 @@ footer {
     background: #0056b3;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+}
+
+.sheet-button-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    background: #fff;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.sheet-button-secondary:hover {
+    background: var(--accent);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
 }
 
 /* Trial Details Content */
